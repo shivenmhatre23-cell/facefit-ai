@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { StyleProfile, ChatMessage } from '@/lib/types';
-import { X, Send, Sparkles, User, Bot, Loader2, ArrowRight } from 'lucide-react';
+import { X, Send, Sparkles, Bot, Loader2 } from 'lucide-react';
 
 interface StylistDrawerProps {
   profile: StyleProfile;
@@ -10,13 +10,12 @@ interface StylistDrawerProps {
   onClose: () => void;
 }
 
-const QUICK_PROMPTS = [
-  'What should I wear to college tomorrow?',
-  'Give me an outfit under ₹3000.',
-  'Give me a hairstyle that is easy to maintain.',
-  'Suggest something for a college presentation.',
-  'What colors should I wear?',
-  'Create a smart casual outfit.',
+// Exactly as specified by user
+const SUGGESTED_PROMPTS = [
+  'What should I wear tomorrow?',
+  'Give me a low-maintenance hairstyle.',
+  'Build an outfit for college.',
+  'Suggest colors for me.',
 ];
 
 export function StylistDrawer({ profile, isOpen, onClose }: StylistDrawerProps) {
@@ -25,7 +24,6 @@ export function StylistDrawer({ profile, isOpen, onClose }: StylistDrawerProps) 
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize with tailored welcome greeting
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       const faceShape = profile.faceGeometry.shape;
@@ -36,7 +34,7 @@ export function StylistDrawer({ profile, isOpen, onClose }: StylistDrawerProps) 
           role: 'assistant',
           content: `Hello! I'm your **FaceFit AI Stylist**. I've reviewed your **${faceShape}** facial geometry, **${profile.hairAnalysis.texture}** hair texture, and **${season}** color palette.
 
-How can I help you refine your style today? You can ask me for budget-friendly outfits (under ₹3000), college looks, haircut advice, or occasion formulas!`,
+How can I help you refine your style today? You can choose one of the suggestions below or ask any specific wardrobe or grooming question!`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -77,7 +75,6 @@ How can I help you refine your style today? You can ask me for budget-friendly o
         throw new Error('Failed to get stylist advice.');
       }
 
-      // Handle streaming or chunked text response
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let assistantContent = '';
@@ -120,7 +117,7 @@ How can I help you refine your style today? You can ask me for budget-friendly o
           id: 'msg-err-' + Date.now(),
           role: 'assistant',
           content:
-            "I'm momentarily having trouble connecting to the styling engine. Try asking again, or pick one of the quick suggestions below!",
+            "I'm momentarily having trouble connecting to the styling engine. Try asking again, or click one of the suggested prompts below!",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -142,7 +139,7 @@ How can I help you refine your style today? You can ask me for budget-friendly o
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-neutral-900">Personal AI Stylist</h3>
+                <h3 className="text-sm font-bold text-neutral-900">AI Personal Stylist</h3>
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
               </div>
               <p className="text-[11px] text-neutral-500 font-mono">
@@ -154,14 +151,15 @@ How can I help you refine your style today? You can ask me for budget-friendly o
           <button
             onClick={onClose}
             className="p-2 rounded-full hover:bg-neutral-200/60 text-neutral-400 hover:text-neutral-700 transition-colors cursor-pointer"
+            aria-label="Close Assistant"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Quick Suggestions Chips */}
+        {/* Suggested Prompts Bar - Exact requested prompts */}
         <div className="p-3 bg-white border-b border-neutral-100 overflow-x-auto whitespace-nowrap flex items-center gap-2 no-scrollbar">
-          {QUICK_PROMPTS.map((prompt, idx) => (
+          {SUGGESTED_PROMPTS.map((prompt, idx) => (
             <button
               key={idx}
               onClick={() => handleSendMessage(prompt)}
@@ -173,7 +171,7 @@ How can I help you refine your style today? You can ask me for budget-friendly o
           ))}
         </div>
 
-        {/* Chat Messages List */}
+        {/* Chat Messages */}
         <div className="flex-1 p-4 sm:p-5 overflow-y-auto space-y-4">
           {messages.map((msg) => (
             <div
@@ -230,7 +228,7 @@ How can I help you refine your style today? You can ask me for budget-friendly o
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Ask: 'What should I wear to college?' or 'Outfit under ₹3000'..."
+              placeholder="Ask: 'What should I wear tomorrow?' or 'Outfit under ₹3000'..."
               disabled={isLoading}
               className="flex-1 px-4 py-2.5 rounded-xl bg-neutral-50 border border-neutral-200 text-xs text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-amber-600 focus:border-amber-600 transition-all disabled:opacity-50"
             />
@@ -248,7 +246,7 @@ How can I help you refine your style today? You can ask me for budget-friendly o
             </button>
           </form>
           <span className="text-[10px] text-neutral-400 block text-center mt-2">
-            Ask for college outfits, ₹ budgets, low maintenance haircuts, or interview attire.
+            Ask for college attire, haircuts, color combinations, or specific occasions.
           </span>
         </div>
       </div>
