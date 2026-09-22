@@ -16,8 +16,13 @@ import {
   User,
   LogOut,
   ChevronDown,
+  Layers,
+  Calendar,
+  IndianRupee,
+  Clock,
 } from 'lucide-react';
 import { getSavedHairstyles, getSavedOutfits } from '@/lib/savedStore';
+import { getSavedLookRecords } from '@/lib/saved/looksStore';
 import { getActiveSession, clearAuthSession, AuthSession } from '@/lib/auth/authStore';
 import { AuthModal } from '@/components/auth/AuthModal';
 
@@ -30,7 +35,10 @@ export function Navbar() {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
   const updateCounts = () => {
-    const total = getSavedHairstyles().length + getSavedOutfits().length;
+    const total =
+      getSavedHairstyles().length +
+      getSavedOutfits().length +
+      getSavedLookRecords().length;
     setSavedCount(total);
   };
 
@@ -51,7 +59,6 @@ export function Navbar() {
     };
   }, []);
 
-  // Close mobile menu and dropdown on route change
   useEffect(() => {
     setMobileMenuOpen(false);
     setUserDropdownOpen(false);
@@ -62,10 +69,12 @@ export function Navbar() {
     setUserDropdownOpen(false);
   };
 
-  const navLinks = [
-    { label: 'Dashboard', href: '/profile', icon: UserCheck },
-    { label: 'Hairstyles', href: '/hairstyles', icon: Scissors },
-    { label: 'Outfits', href: '/outfits', icon: Shirt },
+  const primaryNavLinks = [
+    { label: 'Profile', href: '/profile', icon: UserCheck },
+    { label: 'Builder', href: '/builder', icon: Layers },
+    { label: 'Wardrobe', href: '/wardrobe', icon: Shirt },
+    { label: 'Occasions', href: '/occasions', icon: Calendar },
+    { label: 'Budget', href: '/budget', icon: IndianRupee },
     { label: 'AI Stylist', href: '/stylist', icon: MessageSquare },
     {
       label: 'Saved',
@@ -73,7 +82,14 @@ export function Navbar() {
       icon: Bookmark,
       badge: savedCount > 0 ? savedCount : null,
     },
-    { label: 'Settings', href: '/settings', icon: Settings },
+  ];
+
+  const allNavLinks = [
+    ...primaryNavLinks,
+    { label: 'Hairstyles', href: '/hairstyles', icon: Scissors },
+    { label: 'Outfits', href: '/outfits', icon: Shirt },
+    { label: 'Timeline History', href: '/history', icon: Clock },
+    { label: 'Settings & Privacy', href: '/settings', icon: Settings },
   ];
 
   return (
@@ -95,8 +111,8 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden lg:flex items-center gap-1.5 text-xs text-neutral-600 font-medium">
-          {navLinks.map((link) => {
+        <nav className="hidden lg:flex items-center gap-1 text-xs text-neutral-600 font-medium">
+          {primaryNavLinks.map((link) => {
             const Icon = link.icon;
             const isActive = pathname === link.href;
 
@@ -153,6 +169,14 @@ export function Navbar() {
                     <span>My Lookbook</span>
                   </Link>
                   <Link
+                    href="/history"
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="flex items-center gap-2 px-3.5 py-2 hover:bg-neutral-50 text-neutral-700 transition-colors"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-neutral-400" />
+                    <span>Style Timeline</span>
+                  </Link>
+                  <Link
                     href="/settings"
                     onClick={() => setUserDropdownOpen(false)}
                     className="flex items-center gap-2 px-3.5 py-2 hover:bg-neutral-50 text-neutral-700 transition-colors"
@@ -201,8 +225,8 @@ export function Navbar() {
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-b border-neutral-200 bg-white px-4 py-4 space-y-1 shadow-lg animate-fadeIn">
-          {navLinks.map((link) => {
+        <div className="lg:hidden border-b border-neutral-200 bg-white px-4 py-4 space-y-1 shadow-lg animate-fadeIn max-h-[80vh] overflow-y-auto">
+          {allNavLinks.map((link) => {
             const Icon = link.icon;
             const isActive = pathname === link.href;
 

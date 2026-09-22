@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/common/Navbar';
 import { Footer } from '@/components/common/Footer';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { StyleDnaCard } from '@/components/profile/StyleDnaCard';
 import { FaceShapeCard } from '@/components/profile/FaceShapeCard';
 import { ColorPaletteSection } from '@/components/profile/ColorPaletteSection';
 import { HairstyleGrid } from '@/components/profile/HairstyleGrid';
@@ -12,10 +13,12 @@ import { WardrobeSection } from '@/components/profile/WardrobeSection';
 import { GroomingAndAccessories } from '@/components/profile/GroomingAndAccessories';
 import { StylistDrawer } from '@/components/stylist/StylistDrawer';
 import { ShareModal } from '@/components/profile/ShareModal';
+import { ShareableStyleCard } from '@/components/profile/ShareableStyleCard';
+import { PersonalStyleQuizModal } from '@/components/quiz/PersonalStyleQuizModal';
 import { StylePreferencesModal } from '@/components/preferences/StylePreferencesModal';
 import { SAMPLE_STYLE_PROFILE } from '@/lib/mockData';
 import { StyleProfile } from '@/lib/types';
-import { MessageSquare, Sparkles, ShieldCheck } from 'lucide-react';
+import { MessageSquare, Sparkles, ShieldCheck, Dna } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 function ProfileContent() {
@@ -23,6 +26,8 @@ function ProfileContent() {
   const [profile, setProfile] = useState<StyleProfile>(SAMPLE_STYLE_PROFILE);
   const [isStylistOpen, setIsStylistOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isShareCardOpen, setIsShareCardOpen] = useState(false);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -74,7 +79,7 @@ function ProfileContent() {
     <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12">
         {/* Profile Header Card */}
         <ProfileHeader
           profile={profile}
@@ -83,8 +88,15 @@ function ProfileContent() {
           onOpenPreferences={() => setIsPreferencesOpen(true)}
         />
 
+        {/* Style DNA Affinity Card */}
+        <StyleDnaCard
+          profile={profile}
+          onRetakeQuiz={() => setIsQuizOpen(true)}
+          onShare={() => setIsShareCardOpen(true)}
+        />
+
         {/* 2-Column Geometry & Color Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <FaceShapeCard profile={profile} />
           <ColorPaletteSection palette={profile?.colorPalette} />
         </div>
@@ -106,7 +118,7 @@ function ProfileContent() {
         <GroomingAndAccessories profile={profile} />
 
         {/* Ethical Guarantee Ribbon */}
-        <div className="p-4 rounded-xl bg-neutral-100/80 border border-neutral-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-neutral-500 mb-8">
+        <div className="p-4 rounded-2xl bg-neutral-100/80 border border-neutral-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-neutral-500">
           <span className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             FaceFit AI scores recommendations based on your preferences, climate, and visible geometry. We never judge attractiveness.
@@ -148,6 +160,19 @@ function ProfileContent() {
         profile={profile}
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
+      />
+
+      {/* Shareable Style Identity Card */}
+      <ShareableStyleCard
+        profile={profile}
+        isOpen={isShareCardOpen}
+        onClose={() => setIsShareCardOpen(false)}
+      />
+
+      {/* Personal Style Quiz Modal */}
+      <PersonalStyleQuizModal
+        isOpen={isQuizOpen}
+        onClose={() => setIsQuizOpen(false)}
       />
 
       {/* Style Preferences Tuning Modal */}

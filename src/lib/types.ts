@@ -67,6 +67,7 @@ export interface HairstyleRecommendation {
     fadeOrTaperType: string;
     stylingFinish: string; // e.g., "Matte, pushed back with natural volume"
   };
+  visualPreviewUrl?: string; // Generated preview image
 }
 
 export interface ClothingRecommendation {
@@ -93,6 +94,7 @@ export interface OutfitCombination {
   pieces: OutfitPiece[];
   totalVibe: string;
   budgetTier?: 'Budget (Under ₹3000)' | 'Mid-range (₹3000-₹6000)' | 'Premium';
+  visualPreviewUrl?: string;
 }
 
 export interface AccessoryRecommendation {
@@ -131,4 +133,200 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   suggestedActions?: string[];
+}
+
+// -------------------------------------------------------------
+// ADVANCED CAPABILITIES CONTRACTS
+// -------------------------------------------------------------
+
+/** 1. Personal Style Quiz */
+export interface StyleQuizAnswers {
+  preferredStyle: 'Minimal' | 'Streetwear' | 'Smart Casual' | 'Classic' | 'Sporty' | 'Formal' | 'Traditional/Fusion' | 'Experimental';
+  hairStylingTime: 'Almost none' | '5 minutes' | '10–15 minutes' | '15+ minutes';
+  clothingBudget: 'Budget' | 'Moderate' | 'Premium';
+  primaryOccasions: string[]; // e.g. ["College", "Interview", "Everyday"]
+  preferredColors: string[]; // e.g. ["Navy", "White", "Olive", "Black"]
+  dislikedStyles: string[]; // e.g. ["Skinny jeans", "Loud logos", "High skin fades"]
+  completedAt?: string;
+}
+
+/** 2. Style DNA Profile */
+export interface StyleDnaBreakdown {
+  minimal: number;       // e.g. 82%
+  smartCasual: number;   // e.g. 71%
+  streetwear: number;    // e.g. 48%
+  classic: number;       // e.g. 63%
+  traditionalFusion?: number;
+}
+
+export interface StyleDnaProfile {
+  breakdown: StyleDnaBreakdown;
+  signatureStyle: string;
+  preferredColors: string[];
+  recommendedFits: string[];
+  preferredHairMaintenance: string;
+  commonOccasions: string[];
+  styleKeywords: string[];
+  statement: string;
+}
+
+/** 3. My Wardrobe Mode */
+export type WardrobeCategory = 'T-shirts' | 'Shirts' | 'Pants' | 'Jeans' | 'Jackets' | 'Shoes' | 'Accessories' | 'Ethnic / Traditional';
+
+export interface WardrobeItem {
+  id: string;
+  name: string;
+  category: WardrobeCategory;
+  color: string;
+  patternOrTexture?: string;
+  imageUrl?: string;
+  addedAt: string;
+  isFavorite?: boolean;
+}
+
+/** 4. Look Builder ("Build My Look") */
+export interface CustomLookPiece {
+  category: 'Hair' | 'Top' | 'Bottom' | 'Shoes' | 'Accessories';
+  name: string;
+  color: string;
+  details?: string;
+}
+
+export interface CustomLook {
+  id: string;
+  name: string;
+  hair: { style: string; length: string; maintenance: string };
+  top: { item: string; color: string; fit: string };
+  bottom: { item: string; color: string; fit: string };
+  shoes: { item: string; color: string };
+  accessory: { item: string; color: string };
+  dominantColors: string[];
+  previewUrl?: string;
+  createdAt: string;
+  occasion?: string;
+}
+
+/** 5. AI Stylist Memory */
+export interface StylistMemory {
+  preferredStyles: string[];
+  dislikedStyles: string[];
+  preferredColors: string[];
+  budgetTier: string;
+  hairMaintenanceTolerance: string;
+  learnedNotes: string[];
+  wardrobePieceCount: number;
+  lastUpdated: string;
+}
+
+/** 6. Style History Item */
+export interface StyleHistoryItem {
+  id: string;
+  title: string;
+  type: 'profile_creation' | 'look_generation' | 'barber_consultation' | 'wardrobe_synthesis' | 'quiz_completion';
+  timestamp: string;
+  dateFormatted: string; // e.g., "September 24"
+  summary: string;
+  tags: string[];
+}
+
+/** 7. Look Preview ("Try This Look") */
+export interface LookPreviewRequest {
+  type: 'hairstyle' | 'outfit' | 'complete_look';
+  targetName: string;
+  targetDetails: {
+    color?: string;
+    style?: string;
+    barberNotes?: string;
+    pieces?: { item: string; color: string }[];
+  };
+  baseImage?: string; // base64 or ephemeral preview
+}
+
+export interface LookPreviewResult {
+  previewUrl: string;
+  originalUrl?: string;
+  isAiGeneratedNotice: string;
+  styleNotes: string[];
+  disclaimer: string;
+}
+
+/** 8. Occasion Stylist Plan */
+export type OccasionType =
+  | 'College'
+  | 'Interview'
+  | 'Internship'
+  | 'Presentation'
+  | 'Wedding'
+  | 'Festival'
+  | 'Party'
+  | 'Everyday'
+  | 'Travel'
+  | 'Formal Event';
+
+export interface OccasionRecommendation {
+  occasion: OccasionType;
+  title: string;
+  hairstyle: {
+    name: string;
+    stylingTip: string;
+    maintenance: string;
+  };
+  outfit: {
+    top: string;
+    bottom: string;
+    shoes: string;
+    layer?: string;
+  };
+  colors: string[];
+  accessories: string[];
+  groomingSuggestions: string[];
+  reasoning: string;
+}
+
+/** 9. Budget Stylist Plan */
+export interface BudgetItemEstimate {
+  item: string;
+  estimatedPriceINR: number;
+  isPriority: boolean;
+  notes: string;
+}
+
+export interface BudgetStylistPlan {
+  budgetLimitINR: number;
+  estimatedTotalINR: number;
+  outfitTitle: string;
+  aesthetic: string;
+  items: BudgetItemEstimate[];
+  optionalUpgrades: {
+    item: string;
+    priceINR: number;
+    upgradeReason: string;
+  }[];
+  priceNotice: string;
+}
+
+/** 10. Style Comparison */
+export interface StyleComparisonCandidate {
+  id: string;
+  name: string;
+  category: string;
+  maintenanceLevel: string;
+  stylingEffort: string;
+  suitableOccasions: string[];
+  whyItMayWork: string;
+  potentialDrawbacks: string;
+  tags: string[];
+}
+
+/** 11. Unified Saved Look Record */
+export interface SavedLookRecord {
+  id: string;
+  name: string;
+  type: 'hairstyle' | 'outfit' | 'complete_look' | 'preview';
+  previewUrl?: string;
+  occasion: string;
+  style: string;
+  colors: string[];
+  dateSaved: string;
+  details: Record<string, any>;
 }
