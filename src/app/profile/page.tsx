@@ -1,0 +1,158 @@
+'use client';
+
+import React, { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Navbar } from '@/components/common/Navbar';
+import { Footer } from '@/components/common/Footer';
+import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { FaceShapeCard } from '@/components/profile/FaceShapeCard';
+import { ColorPaletteSection } from '@/components/profile/ColorPaletteSection';
+import { HairstyleGrid } from '@/components/profile/HairstyleGrid';
+import { WardrobeSection } from '@/components/profile/WardrobeSection';
+import { GroomingAndAccessories } from '@/components/profile/GroomingAndAccessories';
+import { StylistDrawer } from '@/components/stylist/StylistDrawer';
+import { ShareModal } from '@/components/profile/ShareModal';
+import { SAMPLE_STYLE_PROFILE } from '@/lib/mockData';
+import { StyleProfile } from '@/lib/types';
+import { MessageSquare, Sparkles, ShieldCheck } from 'lucide-react';
+import confetti from 'canvas-confetti';
+
+function ProfileContent() {
+  const searchParams = useSearchParams();
+  const [profile, setProfile] = useState<StyleProfile>(SAMPLE_STYLE_PROFILE);
+  const [isStylistOpen, setIsStylistOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const isSample = searchParams.get('sample') === 'true';
+
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('facefit_active_profile');
+      if (stored && !isSample) {
+        try {
+          const parsed = JSON.parse(stored) as StyleProfile;
+          setProfile(parsed);
+        } catch (e) {
+          console.error('Failed to parse stored profile:', e);
+          setProfile(SAMPLE_STYLE_PROFILE);
+        }
+      } else {
+        setProfile(SAMPLE_STYLE_PROFILE);
+      }
+    }
+    setIsLoaded(true);
+
+    // Fire celebration confetti once when loaded
+    confetti({
+      particleCount: 40,
+      spread: 60,
+      origin: { y: 0.2 },
+      colors: ['#d97706', '#b45309', '#171717', '#e2e8f0'],
+    });
+  }, [searchParams]);
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]">
+        <div className="flex items-center gap-2 text-xs text-neutral-400 font-mono">
+          <Sparkles className="w-4 h-4 text-amber-600 animate-spin" />
+          Loading your style dossier...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
+      <Navbar />
+
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        {/* Profile Header Card */}
+        <ProfileHeader
+          profile={profile}
+          onOpenStylist={() => setIsStylistOpen(true)}
+          onOpenShare={() => setIsShareOpen(true)}
+        />
+
+        {/* 2-Column Geometry & Color Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+          <FaceShapeCard profile={profile} />
+          <ColorPaletteSection palette={profile.colorPalette} />
+        </div>
+
+        {/* Hairstyle Recommendations with Barber Card */}
+        <HairstyleGrid hairstyles={profile.hairstyles} />
+
+        {/* Wardrobe & Outfits with INR Budgets */}
+        <WardrobeSection profile={profile} />
+
+        {/* Grooming Protocol & Accessories */}
+        <GroomingAndAccessories profile={profile} />
+
+        {/* Ethical Guarantee Ribbon */}
+        <div className="p-4 rounded-xl bg-neutral-100/80 border border-neutral-200/80 flex items-center justify-between text-xs text-neutral-500 mb-8">
+          <span className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            FaceFit AI computes optical harmony and proportions. We never rate facial attractiveness or store portraits.
+          </span>
+          <button
+            onClick={() => setIsShareOpen(true)}
+            className="text-amber-800 hover:text-amber-900 font-semibold underline underline-offset-2 shrink-0 ml-4 cursor-pointer"
+          >
+            Export Dossier
+          </button>
+        </div>
+      </main>
+
+      {/* Floating Stylist Trigger Button */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          onClick={() => setIsStylistOpen(true)}
+          className="group flex items-center gap-2.5 px-5 py-3.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 active:translate-y-0 transition-all border border-neutral-700 cursor-pointer"
+        >
+          <div className="relative">
+            <MessageSquare className="w-4 h-4 text-amber-400" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+          </div>
+          <span className="text-xs font-semibold tracking-wide">
+            Ask AI Stylist
+          </span>
+        </button>
+      </div>
+
+      {/* Slide-over Stylist Drawer */}
+      <StylistDrawer
+        profile={profile}
+        isOpen={isStylistOpen}
+        onClose={() => setIsStylistOpen(false)}
+      />
+
+      {/* Share / Export Modal */}
+      <ShareModal
+        profile={profile}
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+      />
+
+      <Footer />
+    </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]">
+          <div className="flex items-center gap-2 text-xs text-neutral-400 font-mono">
+            <Sparkles className="w-4 h-4 text-amber-600 animate-spin" />
+            Loading style parameters...
+          </div>
+        </div>
+      }
+    >
+      <ProfileContent />
+    </Suspense>
+  );
+}
