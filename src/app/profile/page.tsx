@@ -15,7 +15,7 @@ import { ShareModal } from '@/components/profile/ShareModal';
 import { StylePreferencesModal } from '@/components/preferences/StylePreferencesModal';
 import { SAMPLE_STYLE_PROFILE } from '@/lib/mockData';
 import { StyleProfile } from '@/lib/types';
-import { MessageSquare, Sparkles, ShieldCheck, Sliders } from 'lucide-react';
+import { MessageSquare, Sparkles, ShieldCheck } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 function ProfileContent() {
@@ -45,12 +45,16 @@ function ProfileContent() {
     }
     setIsLoaded(true);
 
-    confetti({
-      particleCount: 35,
-      spread: 55,
-      origin: { y: 0.2 },
-      colors: ['#d97706', '#b45309', '#171717', '#e2e8f0'],
-    });
+    try {
+      confetti({
+        particleCount: 35,
+        spread: 55,
+        origin: { y: 0.2 },
+        colors: ['#d97706', '#b45309', '#171717', '#e2e8f0'],
+      });
+    } catch {
+      // Ignored if canvas unsupported
+    }
   }, [searchParams]);
 
   if (!isLoaded) {
@@ -63,6 +67,8 @@ function ProfileContent() {
       </div>
     );
   }
+
+  const faceShape = profile?.faceGeometry?.shape || 'Oval';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
@@ -80,13 +86,13 @@ function ProfileContent() {
         {/* 2-Column Geometry & Color Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           <FaceShapeCard profile={profile} />
-          <ColorPaletteSection palette={profile.colorPalette} />
+          <ColorPaletteSection palette={profile?.colorPalette} />
         </div>
 
         {/* Hairstyle Recommendations with Barber Card & Transparency */}
         <HairstyleGrid
-          hairstyles={profile.hairstyles}
-          faceShape={profile.faceGeometry.shape}
+          hairstyles={profile?.hairstyles}
+          faceShape={faceShape}
           onOpenPreferences={() => setIsPreferencesOpen(true)}
         />
 
@@ -100,14 +106,14 @@ function ProfileContent() {
         <GroomingAndAccessories profile={profile} />
 
         {/* Ethical Guarantee Ribbon */}
-        <div className="p-4 rounded-xl bg-neutral-100/80 border border-neutral-200/80 flex items-center justify-between text-xs text-neutral-500 mb-8">
+        <div className="p-4 rounded-xl bg-neutral-100/80 border border-neutral-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-neutral-500 mb-8">
           <span className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             FaceFit AI scores recommendations based on your preferences, climate, and visible geometry. We never judge attractiveness.
           </span>
           <button
             onClick={() => setIsPreferencesOpen(true)}
-            className="text-amber-800 hover:text-amber-900 font-semibold underline underline-offset-2 shrink-0 ml-4 cursor-pointer"
+            className="text-amber-800 hover:text-amber-900 font-semibold underline underline-offset-2 shrink-0 cursor-pointer"
           >
             Adjust Parameters
           </button>

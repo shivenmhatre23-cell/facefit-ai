@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { StyleProfile } from '@/lib/types';
 import { AgeEstimateBadge } from './AgeEstimateBadge';
-import { Sparkles, Share2, RefreshCw, MessageSquare, Sliders } from 'lucide-react';
+import { Sparkles, Share2, RefreshCw, MessageSquare, Sliders, User } from 'lucide-react';
 
 interface ProfileHeaderProps {
   profile: StyleProfile;
@@ -19,14 +19,40 @@ export function ProfileHeader({
   onOpenShare,
   onOpenPreferences,
 }: ProfileHeaderProps) {
+  const [previewImg, setPreviewImg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const ephemeralImg = sessionStorage.getItem('facefit_preview_image');
+      if (ephemeralImg) {
+        setPreviewImg(ephemeralImg);
+      }
+    }
+  }, []);
+
+  const faceShape = profile?.faceGeometry?.shape || 'Oval';
+  const confidence = profile?.faceGeometry?.confidence || 'medium';
+  const hairLength = profile?.hairAnalysis?.length || 'Medium';
+  const hairTexture = profile?.hairAnalysis?.texture || 'Natural';
+  const hairVolume = profile?.hairAnalysis?.volume || 'Natural Density';
+  const aesthetics = profile?.suggestedAesthetics || ['Modern Tailoring', 'Casual Contemporary'];
+  const palette = profile?.colorPalette;
+  const swatches = palette?.swatches || [];
+
   return (
     <div className="luxury-card rounded-3xl p-6 sm:p-9 bg-white border border-neutral-200 shadow-xs mb-10">
       {/* Top Section Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-100">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-neutral-900 text-white flex items-center justify-center shadow-xs">
-            <Sparkles className="w-5 h-5 text-amber-400" />
-          </div>
+          {previewImg ? (
+            <div className="w-12 h-12 rounded-2xl overflow-hidden border border-neutral-300 shadow-xs shrink-0">
+              <img src={previewImg} alt="Ephemeral Portrait" className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div className="w-12 h-12 rounded-2xl bg-neutral-900 text-white flex items-center justify-center shadow-xs shrink-0">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+            </div>
+          )}
           <div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 block">
               Personal Sartorial Blueprint
@@ -85,7 +111,7 @@ export function ProfileHeader({
           <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider mb-1.5">
             Approx. Age Range
           </span>
-          <AgeEstimateBadge age={profile.estimatedAge} />
+          <AgeEstimateBadge age={profile?.estimatedAge} />
         </div>
 
         {/* 2. Face Shape */}
@@ -95,10 +121,10 @@ export function ProfileHeader({
           </span>
           <div>
             <div className="text-base font-serif-editorial font-bold text-neutral-900">
-              {profile.faceGeometry.shape}
+              {faceShape}
             </div>
             <span className="text-[10px] text-neutral-500 font-medium">
-              {profile.faceGeometry.confidence} confidence
+              {confidence} confidence
             </span>
           </div>
         </div>
@@ -110,10 +136,10 @@ export function ProfileHeader({
           </span>
           <div>
             <div className="text-xs font-bold text-neutral-900">
-              {profile.hairAnalysis.length} • {profile.hairAnalysis.texture}
+              {hairLength} • {hairTexture}
             </div>
             <span className="text-[10px] text-neutral-500">
-              {profile.hairAnalysis.volume} volume
+              {hairVolume}
             </span>
           </div>
         </div>
@@ -125,10 +151,10 @@ export function ProfileHeader({
           </span>
           <div>
             <div className="text-xs font-bold text-neutral-900 truncate">
-              {profile.suggestedAesthetics[0] || 'Modern Tailoring'}
+              {aesthetics[0] || 'Modern Tailoring'}
             </div>
             <span className="text-[10px] text-amber-800 font-medium">
-              {profile.suggestedAesthetics[1] || 'Casual Contemporary'}
+              {aesthetics[1] || 'Casual Contemporary'}
             </span>
           </div>
         </div>
@@ -140,10 +166,10 @@ export function ProfileHeader({
           </span>
           <div>
             <div className="text-xs font-bold text-neutral-900 truncate">
-              {profile.colorPalette.seasonName}
+              {palette?.seasonName || 'Warm Harmonized'}
             </div>
             <div className="flex items-center gap-1 mt-1.5">
-              {profile.colorPalette.swatches.slice(0, 5).map((s, i) => (
+              {swatches.slice(0, 5).map((s, i) => (
                 <div
                   key={i}
                   className="w-3.5 h-3.5 rounded-full border border-black/10 shadow-2xs"

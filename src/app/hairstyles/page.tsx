@@ -7,7 +7,7 @@ import { HairstyleGrid } from '@/components/profile/HairstyleGrid';
 import { StylePreferencesModal } from '@/components/preferences/StylePreferencesModal';
 import { StyleProfile } from '@/lib/types';
 import { SAMPLE_STYLE_PROFILE } from '@/lib/mockData';
-import { Scissors, Sparkles, Sliders } from 'lucide-react';
+import { Scissors, Sliders } from 'lucide-react';
 import Link from 'next/link';
 
 export default function HairstylesPage() {
@@ -27,6 +27,8 @@ export default function HairstylesPage() {
     }
   }, []);
 
+  const faceShape = profile?.faceGeometry?.shape || 'Oval';
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
       <Navbar />
@@ -43,7 +45,7 @@ export default function HairstylesPage() {
               Scored Hairstyle Recommendations
             </h1>
             <p className="text-xs text-neutral-500 mt-1 max-w-xl">
-              Cuts ranked and scored to match your <strong className="text-neutral-800">{profile.faceGeometry.shape}</strong> facial geometry, maintenance tolerance, and grooming habits.
+              Cuts ranked and scored to match your <strong className="text-neutral-800">{faceShape}</strong> facial geometry, maintenance tolerance, and grooming habits.
             </p>
           </div>
 
@@ -58,8 +60,8 @@ export default function HairstylesPage() {
 
         {/* Hairstyle Cards Grid with Transparent Scoring */}
         <HairstyleGrid
-          hairstyles={profile.hairstyles}
-          faceShape={profile.faceGeometry.shape}
+          hairstyles={profile?.hairstyles}
+          faceShape={faceShape}
           onOpenPreferences={() => setIsPreferencesOpen(true)}
         />
 

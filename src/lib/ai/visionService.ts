@@ -33,7 +33,7 @@ export class VisionService {
 
   /**
    * Primary entry point: transforms portrait image into a verified Style Profile.
-   * Catches all raw model failures and gracefully falls back.
+   * Catches all raw model failures, timeouts, and malformed outputs and gracefully falls back.
    */
   async processPortrait(request: VisionAnalysisRequest): Promise<{
     analysis: StyleAnalysisOutput;
@@ -48,9 +48,9 @@ export class VisionService {
     try {
       analysis = await this.primaryProvider.analyzePortrait(request);
     } catch (err: unknown) {
+      const errMessage = err instanceof Error ? err.message : String(err);
       console.warn(
-        `[VisionService] Primary provider (${this.primaryProvider.name}) failed or was unavailable. Engaging resilient fallback. Details:`,
-        err instanceof Error ? err.message : err
+        `[VisionService] Primary provider (${this.primaryProvider.name}) was unavailable. Engaging resilient fallback. Details: ${errMessage}`
       );
       analysis = await this.fallbackProvider.analyzePortrait(request);
       providerUsed = this.fallbackProvider.name;
@@ -69,64 +69,163 @@ export class VisionService {
   }
 
   /**
-   * Maps the clean StyleAnalysis schema to the frontend StyleProfile model
+   * Maps the clean StyleAnalysis schema to the frontend StyleProfile model with complete null safety
    */
   private mapAnalysisToStyleProfile(analysis: StyleAnalysisOutput): StyleProfile {
+    const defaultColors = ['#3B2F2F', '#C2593F', '#4A5B43', '#D7CEBE', '#CF8A2C', '#263445'];
+    const colorsList = Array.isArray(analysis?.recommended_colors) && analysis.recommended_colors.length > 0
+      ? analysis.recommended_colors
+      : defaultColors;
+
     const swatches =
-      analysis.recommended_color_swatches && analysis.recommended_color_swatches.length > 0
+      Array.isArray(analysis?.recommended_color_swatches) && analysis.recommended_color_swatches.length > 0
         ? analysis.recommended_color_swatches.map((s) => ({
-            name: s.name,
-            hex: s.hex,
+            name: s.name || 'Tone',
+            hex: s.hex || '#333333',
             role: (s.role || 'neutral') as any,
-            explanation: s.reason,
+            explanation: s.reason || 'Harmonizes with detected undertone.',
           }))
-        : analysis.recommended_colors.map((hex, i) => ({
+        : colorsList.map((hex, i) => ({
             name: `Tone 0${i + 1}`,
             hex,
             role: (i === 0 ? 'primary' : i === 1 ? 'accent' : 'neutral') as any,
             explanation: 'Calibrated for visual harmony with detected undertones.',
           }));
 
+    const faceShape = analysis?.face_shape || 'Oval';
+    const ageRange = analysis?.estimated_age_range || '22-26';
+    const ageConfidence = analysis?.age_confidence || 'medium';
+    const hairTexture = analysis?.hair?.texture || 'Natural';
+    const hairLength = (analysis?.hair?.length as any) || 'Medium';
+    const hairVisibleStyle = analysis?.hair?.visible_style || 'Natural style';
+    const facialHairPresent = Boolean(analysis?.facial_hair?.present);
+    const facialHairDesc = analysis?.facial_hair?.description || (facialHairPresent ? 'Visible trim' : 'Clean-shaven');
+    const glassesPresent = Boolean(analysis?.glasses?.present);
+    const glassesStyle = analysis?.glasses?.style || 'None observed';
+    const currentClothingCategory = analysis?.current_clothing?.category || 'Casual';
+    const currentClothingStyle = analysis?.current_clothing?.style || 'Contemporary';
+    const currentClothingColors = Array.isArray(analysis?.current_clothing?.dominant_colors)
+      ? analysis.current_clothing.dominant_colors.join(', ')
+      : 'Neutral';
+
+    const hairstyles = Array.isArray(analysis?.hairstyle_recommendations) && analysis.hairstyle_recommendations.length > 0
+      ? analysis.hairstyle_recommendations.map((h, i) => ({
+          id: h.id || `hair-${i + 1}`,
+          name: h.name || 'Textured Crop',
+          explanation: h.suitability_explanation || 'Tailored to frame your facial contour.',
+          whyItWorks: h.why_it_works || 'Preserves natural visual balance.',
+          maintenanceLevel: h.maintenance_level || 'Medium',
+          stylingEffortMinutes: typeof h.styling_effort_minutes === 'number' ? h.styling_effort_minutes : 5,
+          suitableProducts: Array.isArray(h.suitable_products) && h.suitable_products.length > 0 ? h.suitable_products : ['Matte Clay'],
+          barberInstructions: {
+            sidesAndBack: h.barber_instructions?.sides_and_back || 'Low taper fade on sides',
+            topLength: h.barber_instructions?.top_length || '2 to 2.5 inches scissor cut',
+            fadeOrTaperType: h.barber_instructions?.fade_or_taper_type || 'Low Taper Fade',
+            stylingFinish: h.barber_instructions?.styling_finish || 'Matte natural finish',
+          },
+        }))
+      : [
+          {
+            id: 'hair-1',
+            name: 'Textured Modern Crop',
+            explanation: 'Creates clean vertical balance and frames jawline.',
+            whyItWorks: 'Preserves natural proportions.',
+            maintenanceLevel: 'Low' as const,
+            stylingEffortMinutes: 4,
+            suitableProducts: ['Matte Styling Clay'],
+            barberInstructions: {
+              sidesAndBack: 'Low skin taper fade',
+              topLength: '2 inches textured point-cut',
+              fadeOrTaperType: 'Low Taper',
+              stylingFinish: 'Natural matte forward',
+            },
+          },
+        ];
+
+    const outfitCombinations = Array.isArray(analysis?.outfit_recommendations) && analysis.outfit_recommendations.length > 0
+      ? analysis.outfit_recommendations.map((o, idx) => ({
+          id: o.id || `outfit-${idx + 1}`,
+          title: o.title || 'Curated Contemporary Ensemble',
+          aesthetic: o.style_category || 'Smart Casual',
+          occasion: o.occasion || 'Everyday',
+          pieces: Array.isArray(o.pieces)
+            ? o.pieces.map((p) => ({
+                item: p.item || 'Cotton Top',
+                color: p.color || 'Neutral',
+                stylingTip: p.styling_tip || 'Clean relaxed fit.',
+                estimatedBudgetINR: p.estimated_budget_inr || '₹999 - ₹1,499',
+              }))
+            : [{ item: 'Boxy Cotton Tee', color: 'Oatmeal', stylingTip: 'Drop shoulder', estimatedBudgetINR: '₹799' }],
+          totalVibe: o.total_vibe || 'Approachable, clean silhouette.',
+          budgetTier: (o.budget_tier as any) || 'Budget (Under ₹3000)',
+        }))
+      : [
+          {
+            id: 'outfit-1',
+            title: 'Collegiate Smart Casual',
+            aesthetic: 'Smart Casual',
+            occasion: 'College Everyday',
+            pieces: [
+              { item: 'Relaxed Boxy Cotton Tee', color: 'Oatmeal Sand', stylingTip: 'Drop shoulder frame', estimatedBudgetINR: '₹699' },
+              { item: 'Straight Chinos', color: 'Olive', stylingTip: 'Single cuff break', estimatedBudgetINR: '₹1,299' },
+            ],
+            totalVibe: 'Effortless and balanced.',
+            budgetTier: 'Budget (Under ₹3000)' as const,
+          },
+        ];
+
+    const accessories = Array.isArray(analysis?.accessory_recommendations) && analysis.accessory_recommendations.length > 0
+      ? analysis.accessory_recommendations.map((a) => ({
+          type: a.type || 'Eyewear',
+          recommendation: a.recommendation || 'Geometric subtle frames',
+          whyItComplements: a.why_it_complements || 'Accents facial structure.',
+        }))
+      : [
+          {
+            type: 'Eyewear',
+            recommendation: 'Subtle rectangular or square metal frames',
+            whyItComplements: 'Complements facial contour.',
+          },
+        ];
+
     return {
       id: 'profile-' + Date.now(),
       timestamp: new Date().toISOString(),
       estimatedAge: {
-        range: `${analysis.estimated_age_range} years`,
-        confidence: analysis.age_confidence,
+        range: `${ageRange} years`,
+        confidence: ageConfidence,
         disclaimer:
           'Approximate AI visual estimate for aesthetic and proportion matching only. Visual age does not define your actual age.',
       },
       faceGeometry: {
-        shape: analysis.face_shape,
-        confidence: analysis.age_confidence,
-        proportionsSummary: `Visible ${analysis.face_shape} facial contour. Recommendations are tailored to balance vertical and horizontal visual axes.`,
+        shape: faceShape,
+        confidence: ageConfidence,
+        proportionsSummary: `Visible ${faceShape} facial contour. Recommendations are tailored to balance vertical and horizontal visual axes.`,
         featuresNotes: [
-          `Detected ${analysis.face_shape} geometric outline`,
-          `Observed ${analysis.hair.texture.toLowerCase()} hair texture`,
-          analysis.facial_hair.present
-            ? `Visible facial hair: ${analysis.facial_hair.description}`
-            : 'Clean-shaven facial outline',
+          `Detected ${faceShape} geometric outline`,
+          `Observed ${hairTexture.toLowerCase()} hair texture`,
+          facialHairPresent ? `Visible facial hair: ${facialHairDesc}` : 'Clean-shaven facial outline',
         ],
       },
       hairAnalysis: {
-        length: (analysis.hair.length as any) || 'Medium',
-        texture: analysis.hair.texture,
+        length: hairLength,
+        texture: hairTexture,
         volume: 'Natural Density',
-        currentStyle: analysis.hair.visible_style,
+        currentStyle: hairVisibleStyle,
       },
       facialHairAnalysis: {
-        present: analysis.facial_hair.present,
-        type: analysis.facial_hair.present ? 'Stubble' : 'Clean Shaven',
-        density: analysis.facial_hair.description,
-        recommendation: analysis.facial_hair.present
+        present: facialHairPresent,
+        type: facialHairPresent ? 'Stubble' : 'Clean Shaven',
+        density: facialHairDesc,
+        recommendation: facialHairPresent
           ? 'Maintain neat borders along cheekline to preserve jawline definition.'
           : 'Clean shaven appearance emphasizes natural jaw contours.',
       },
       observations: {
-        glassesPresent: analysis.glasses.present,
-        glassesDescription: analysis.glasses.style,
-        accessoriesObserved: analysis.glasses.present ? ['Eyewear'] : [],
-        currentClothingObservation: `${analysis.current_clothing.category} (${analysis.current_clothing.style}) in ${analysis.current_clothing.dominant_colors.join(', ')}`,
+        glassesPresent,
+        glassesDescription: glassesStyle,
+        accessoriesObserved: glassesPresent ? ['Eyewear'] : [],
+        currentClothingObservation: `${currentClothingCategory} (${currentClothingStyle}) in ${currentClothingColors}`,
         apparentUndertone: 'Warm',
       },
       colorPalette: {
@@ -139,22 +238,10 @@ export class VisionService {
         colorsToAvoid: ['Harsh Icy White', 'Overly Saturated Neon'],
         metalsRecommended: ['Brushed Silver', 'Warm Brass', 'Gunmetal'],
       },
-      suggestedAesthetics: analysis.style_direction,
-      hairstyles: analysis.hairstyle_recommendations.map((h) => ({
-        id: h.id,
-        name: h.name,
-        explanation: h.suitability_explanation,
-        whyItWorks: h.why_it_works,
-        maintenanceLevel: h.maintenance_level,
-        stylingEffortMinutes: h.styling_effort_minutes,
-        suitableProducts: h.suitable_products,
-        barberInstructions: {
-          sidesAndBack: h.barber_instructions.sides_and_back,
-          topLength: h.barber_instructions.top_length,
-          fadeOrTaperType: h.barber_instructions.fade_or_taper_type,
-          stylingFinish: h.barber_instructions.styling_finish,
-        },
-      })),
+      suggestedAesthetics: Array.isArray(analysis?.style_direction) && analysis.style_direction.length > 0
+        ? analysis.style_direction
+        : ['Contemporary Classic', 'Casual Tailoring'],
+      hairstyles,
       clothingRecommendations: [
         {
           category: 'Top',
@@ -162,7 +249,7 @@ export class VisionService {
           suggestedColors: swatches.slice(0, 2).map((s) => s.name),
           fitGuidance:
             'Open collar geometry that subtly elongates the neckline and balances facial proportions.',
-          aesthetic: analysis.style_direction[0] || 'Smart Casual',
+          aesthetic: (analysis?.style_direction?.[0] as string) || 'Smart Casual',
           occasion: 'College Everyday / Social',
         },
         {
@@ -174,25 +261,8 @@ export class VisionService {
           occasion: 'Presentations / Formal',
         },
       ],
-      outfitCombinations: analysis.outfit_recommendations.map((o) => ({
-        id: o.id,
-        title: o.title,
-        aesthetic: o.style_category,
-        occasion: o.occasion,
-        pieces: o.pieces.map((p) => ({
-          item: p.item,
-          color: p.color,
-          stylingTip: p.styling_tip,
-          estimatedBudgetINR: p.estimated_budget_inr || '₹999 - ₹1499',
-        })),
-        totalVibe: o.total_vibe,
-        budgetTier: (o.budget_tier as any) || 'Budget (Under ₹3000)',
-      })),
-      accessories: analysis.accessory_recommendations.map((a) => ({
-        type: a.type,
-        recommendation: a.recommendation,
-        whyItComplements: a.why_it_complements,
-      })),
+      outfitCombinations,
+      accessories,
       grooming: [
         {
           category: 'Skincare',
@@ -201,7 +271,7 @@ export class VisionService {
         },
         {
           category: 'Beard/Shave',
-          tip: analysis.facial_hair.present
+          tip: facialHairPresent
             ? 'Trim edges every 3 days 2 fingers above Adam\'s apple for clean contouring.'
             : 'Shave with warm water and moisturizing aftershave balm.',
           frequency: 'Twice Weekly',

@@ -1,13 +1,36 @@
 import React from 'react';
 import { StyleProfile } from '@/lib/types';
-import { Sparkles, Watch, Glasses, Droplets, CheckCircle2 } from 'lucide-react';
+import { Glasses, Droplets } from 'lucide-react';
 
 interface GroomingAndAccessoriesProps {
   profile: StyleProfile;
 }
 
 export function GroomingAndAccessories({ profile }: GroomingAndAccessoriesProps) {
-  const { accessories, grooming } = profile;
+  const accessories = Array.isArray(profile?.accessories) && profile.accessories.length > 0
+    ? profile.accessories
+    : [
+        {
+          type: 'Eyewear',
+          recommendation: 'Subtle rectangular or square metal frames',
+          whyItComplements: 'Provides gentle geometry that frames facial contour with precision.',
+        },
+      ];
+
+  const grooming = Array.isArray(profile?.grooming) && profile.grooming.length > 0
+    ? profile.grooming
+    : [
+        {
+          category: 'Skincare',
+          tip: 'Lightweight hydrating moisturizer with broad-spectrum SPF 50.',
+          frequency: 'Every Morning',
+        },
+        {
+          category: 'Beard / Shaving',
+          tip: 'Clean cheekline contours and neckline grooming to preserve jawline sharpness.',
+          frequency: 'Twice Weekly',
+        },
+      ];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
@@ -34,10 +57,10 @@ export function GroomingAndAccessories({ profile }: GroomingAndAccessoriesProps)
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 block mb-1">
                   {acc.type}
                 </span>
-                <p className="font-semibold text-neutral-900 mb-1 leading-snug">
+                <p className="font-semibold text-neutral-900 mb-1 leading-snug break-words">
                   {acc.recommendation}
                 </p>
-                <p className="text-[11px] text-neutral-500 leading-relaxed">
+                <p className="text-[11px] text-neutral-500 leading-relaxed break-words">
                   {acc.whyItComplements}
                 </p>
               </div>
@@ -74,7 +97,7 @@ export function GroomingAndAccessories({ profile }: GroomingAndAccessoriesProps)
                   <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">
                     {item.category}
                   </span>
-                  <p className="text-neutral-800 text-[11px] leading-relaxed">
+                  <p className="text-neutral-800 text-[11px] leading-relaxed break-words">
                     {item.tip}
                   </p>
                 </div>

@@ -2,13 +2,44 @@ import { NextRequest, NextResponse } from 'next/server';
 import { geminiClient, hasValidGeminiKey } from '@/lib/gemini';
 import { buildStylistSystemPrompt } from '@/lib/prompts';
 import { StyleProfile, ChatMessage } from '@/lib/types';
+import { rateLimiter, getClientIp } from '@/lib/security/rateLimiter';
 
 export const maxDuration = 60;
 
+// Rate limit: 30 stylist messages per minute per IP
+const STYLIST_LIMIT = 30;
+const STYLIST_WINDOW_MS = 60 * 1000;
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { profile, messages, userMessage } = body as {
+    // 1. Rate limiter check
+    const clientIp = getClientIp(req.headers);
+    const rateCheck = rateLimiter.check(`stylist:${clientIp}`, STYLIST_LIMIT, STYLIST_WINDOW_MS);
+
+    if (!rateCheck.allowed) {
+      const retryAfterSec = Math.ceil(rateCheck.resetMs / 1000);
+      return NextResponse.json(
+        {
+          error: `Stylist rate limit reached. Please wait ${retryAfterSec} seconds before sending another message.`,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfterSec),
+          },
+        }
+      );
+    }
+
+    // 2. Parse request body safely
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Malformed JSON in request body.' }, { status: 400 });
+    }
+
+    const { profile, messages, userMessage } = (body || {}) as {
       profile: StyleProfile;
       messages: ChatMessage[];
       userMessage: string;
@@ -18,20 +49,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User message is required.' }, { status: 400 });
     }
 
-    const currentPrompt = userMessage || messages[messages.length - 1].content;
-    const systemInstruction = profile ? buildStylistSystemPrompt(profile) : 'You are FaceFit AI Stylist.';
+    // 3. Input length ceiling & sanitization
+    const rawPrompt = userMessage || messages[messages.length - 1]?.content || '';
+    if (rawPrompt.length > 2000) {
+      return NextResponse.json(
+        { error: 'Prompt exceeds the maximum allowed length of 2,000 characters.' },
+        { status: 400 }
+      );
+    }
 
-    // If Gemini key is available, use streaming API
+    const currentPrompt = rawPrompt.trim();
+    const systemInstruction = profile ? buildStylistSystemPrompt(profile) : 'You are FaceFit AI Stylist, an expert personal fashion and grooming consultant.';
+
+    // 4. If Gemini key is available, use streaming API
     if (geminiClient && hasValidGeminiKey) {
-      // Build conversation history for Gemini
       const conversationHistory = (messages || [])
-        .slice(-6) // keep recent context
+        .slice(-8) // keep recent 8 messages for context retention without token explosion
         .map((m) => ({
           role: m.role === 'user' ? 'user' : 'model',
           parts: [{ text: m.content }],
         }));
 
-      // Append current message if not already included
       if (!messages || messages[messages.length - 1]?.content !== currentPrompt) {
         conversationHistory.push({
           role: 'user',
@@ -75,7 +113,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Fallback contextual response engine for mock / offline mode
+    // 5. Fallback contextual response engine for mock / offline mode
     const mockReply = generateOfflineStylistReply(currentPrompt, profile);
     return new Response(mockReply, {
       headers: {
@@ -95,9 +133,9 @@ export async function POST(req: NextRequest) {
 /**
  * High-quality contextual fallback responses matching user queries
  */
-function generateOfflineStylistReply(prompt: string, profile: StyleProfile): string {
-  const query = prompt.toLowerCase();
-  const faceShape = profile?.faceGeometry?.shape || 'Oval';
+function generateOfflineStylistReply(prompt: string, profile?: StyleProfile): string {
+  const query = (prompt || '').toLowerCase();
+  const faceShape = profile?.faceGeometry?.shape || 'Balanced Oval';
   const palette = profile?.colorPalette?.seasonName || 'Warm Autumn';
   const topColors = profile?.colorPalette?.colorsToWear?.slice(0, 3).join(', ') || 'Olive, Terracotta, and Espresso';
 

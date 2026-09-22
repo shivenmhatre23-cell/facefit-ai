@@ -5,7 +5,7 @@ import { Navbar } from '@/components/common/Navbar';
 import { Footer } from '@/components/common/Footer';
 import { StyleProfile, ChatMessage } from '@/lib/types';
 import { SAMPLE_STYLE_PROFILE } from '@/lib/mockData';
-import { Bot, Send, Loader2, Sparkles, Trash2, ArrowRight } from 'lucide-react';
+import { Bot, Send, Loader2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 const SUGGESTED_PROMPTS = [
@@ -15,7 +15,7 @@ const SUGGESTED_PROMPTS = [
   'Suggest colors for me.',
 ];
 
-export default function StylistPage() {
+export function StylistPageContent() {
   const [profile, setProfile] = useState<StyleProfile>(SAMPLE_STYLE_PROFILE);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -35,20 +35,24 @@ export default function StylistPage() {
     }
   }, []);
 
+  const faceShape = profile?.faceGeometry?.shape || 'Balanced Oval';
+  const hairTexture = profile?.hairAnalysis?.texture || 'Natural';
+  const seasonName = profile?.colorPalette?.seasonName || 'Warm Harmonized';
+
   useEffect(() => {
     if (messages.length === 0) {
       setMessages([
         {
           id: 'welcome-full',
           role: 'assistant',
-          content: `Welcome to your personal style studio. I'm your **FaceFit AI Stylist**, currently grounded in your **${profile.faceGeometry.shape}** facial balance, **${profile.hairAnalysis.texture}** hair, and **${profile.colorPalette.seasonName}** palette.
+          content: `Welcome to your personal style studio. I'm your **FaceFit AI Stylist**, currently grounded in your **${faceShape}** facial balance, **${hairTexture}** hair, and **${seasonName}** palette.
 
 Ask me anything about wardrobe pairings, college presentation looks, haircuts, or outfits under ₹3,000!`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
     }
-  }, [profile]);
+  }, [faceShape, hairTexture, seasonName, messages.length]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -80,7 +84,10 @@ Ask me anything about wardrobe pairings, college presentation looks, haircuts, o
         }),
       });
 
-      if (!response.ok) throw new Error('Network error');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Network error occurred while fetching stylist advice.');
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -116,14 +123,16 @@ Ask me anything about wardrobe pairings, college presentation looks, haircuts, o
           prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, content: text } : msg))
         );
       }
-    } catch (e) {
-      console.error(e);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Temporary connection hitch';
       setMessages((prev) => [
         ...prev,
         {
           id: 'err-' + Date.now(),
           role: 'assistant',
-          content: "I ran into a temporary connection hitch. Please try sending your query again!",
+          content: msg.includes('rate limit')
+            ? `Stylist note: ${msg}`
+            : "I ran into a temporary connection hitch. Please try sending your query again!",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -162,7 +171,7 @@ Ask me anything about wardrobe pairings, college presentation looks, haircuts, o
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
               </div>
               <p className="text-xs text-neutral-500">
-                Grounded on: <strong className="text-neutral-800">{profile.faceGeometry.shape}</strong> Face • <strong className="text-neutral-800">{profile.colorPalette.seasonName}</strong>
+                Grounded on: <strong className="text-neutral-800">{faceShape}</strong> Face • <strong className="text-neutral-800">{seasonName}</strong>
               </p>
             </div>
           </div>
@@ -216,7 +225,7 @@ Ask me anything about wardrobe pairings, college presentation looks, haircuts, o
               )}
 
               <div
-                className={`max-w-[80%] rounded-2xl p-4 text-xs leading-relaxed ${
+                className={`max-w-[80%] rounded-2xl p-4 text-xs leading-relaxed break-words ${
                   msg.role === 'user'
                     ? 'bg-neutral-900 text-white rounded-tr-xs shadow-xs'
                     : 'bg-neutral-50 border border-neutral-200/80 text-neutral-800 rounded-tl-xs whitespace-pre-wrap'
@@ -284,4 +293,8 @@ Ask me anything about wardrobe pairings, college presentation looks, haircuts, o
       <Footer />
     </div>
   );
+}
+
+export default function StylistPage() {
+  return <StylistPageContent />;
 }

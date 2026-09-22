@@ -6,33 +6,33 @@ import { Footer } from '@/components/common/Footer';
 import {
   ShieldCheck,
   Trash2,
-  Key,
   Check,
-  AlertCircle,
   EyeOff,
-  Sparkles,
-  Lock,
+  User,
+  LogOut,
+  KeyRound,
+  Server,
 } from 'lucide-react';
+import { getActiveSession, clearAuthSession, AuthSession } from '@/lib/auth/authStore';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 export function SettingsContent() {
-  const [apiKey, setApiKey] = useState('');
-  const [savedKeySuccess, setSavedKeySuccess] = useState(false);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [clearedSuccess, setClearedSuccess] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  const loadSession = () => {
+    setSession(getActiveSession());
+  };
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const existing = localStorage.getItem('facefit_custom_api_key') || '';
-      setApiKey(existing);
-    }
+    loadSession();
+    window.addEventListener('facefit_auth_changed', loadSession);
+    return () => window.removeEventListener('facefit_auth_changed', loadSession);
   }, []);
 
-  const handleSaveApiKey = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('facefit_custom_api_key', apiKey.trim());
-      setSavedKeySuccess(true);
-      setTimeout(() => setSavedKeySuccess(false), 2500);
-    }
+  const handleSignOut = () => {
+    clearAuthSession();
   };
 
   const handleClearAllData = () => {
@@ -41,6 +41,7 @@ export function SettingsContent() {
         localStorage.removeItem('facefit_active_profile');
         localStorage.removeItem('facefit_saved_hairstyles');
         localStorage.removeItem('facefit_saved_outfits');
+        sessionStorage.removeItem('facefit_preview_image');
         window.dispatchEvent(new Event('facefit_saved_changed'));
         setClearedSuccess(true);
         setTimeout(() => setClearedSuccess(false), 2500);
@@ -62,11 +63,74 @@ export function SettingsContent() {
             Settings & Privacy
           </h1>
           <p className="text-xs text-neutral-500 mt-1">
-            Review FaceFit AI's ephemeral data policies and manage your local styling parameters.
+            Review FaceFit AI's ephemeral data architecture and manage your active account session.
           </p>
         </div>
 
         <div className="space-y-8">
+          {/* Account & Session Management */}
+          <div className="luxury-card rounded-2xl p-6 sm:p-8 bg-white border border-neutral-200 shadow-2xs">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-neutral-900 text-white flex items-center justify-center">
+                  <User className="w-4 h-4 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-serif-editorial font-bold text-neutral-900">
+                    Active Session & Identity
+                  </h3>
+                  <span className="text-xs text-neutral-500">
+                    {session && session.user.role === 'member'
+                      ? 'Authenticated Stylist Member'
+                      : 'Guest Explorer Session'}
+                  </span>
+                </div>
+              </div>
+
+              {session && session.user.role === 'member' ? (
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  Signed In
+                </span>
+              ) : (
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-neutral-100 text-neutral-600 border border-neutral-200">
+                  Guest Mode
+                </span>
+              )}
+            </div>
+
+            {session && session.user.role === 'member' ? (
+              <div className="space-y-3 pt-2 text-xs">
+                <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">
+                      Member Account
+                    </span>
+                    <span className="font-semibold text-neutral-900">{session.user.name} ({session.user.email})</span>
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    className="self-start sm:self-auto px-3 py-1.5 rounded-lg border border-neutral-200 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 text-neutral-600 transition-colors flex items-center gap-1.5 cursor-pointer font-medium"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <p className="text-neutral-600">
+                  You are exploring in guest mode. Sign in to sync your lookbook and style parameters across multiple devices.
+                </p>
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="self-start sm:self-auto px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white font-semibold transition-colors cursor-pointer shrink-0 shadow-xs"
+                >
+                  Sign In / Register
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Privacy & Ephemeral Data Section */}
           <div className="luxury-card rounded-2xl p-6 sm:p-8 bg-white border border-neutral-200 shadow-2xs">
             <div className="flex items-center gap-3 mb-4">
@@ -75,27 +139,27 @@ export function SettingsContent() {
               </div>
               <div>
                 <h3 className="text-base font-serif-editorial font-bold text-neutral-900">
-                  Ephemeral Photo Privacy Policy
+                  Ephemeral Photo Privacy Architecture
                 </h3>
                 <span className="text-xs text-neutral-500">Zero Biometric Storage Guarantee</span>
               </div>
             </div>
 
             <p className="text-xs text-neutral-600 leading-relaxed mb-4">
-              FaceFit AI processes photos purely in-memory over an encrypted TLS connection. When your photo is analyzed by the multimodal vision pipeline, it is never saved to our disks, databases, or training datasets.
+              FaceFit AI processes photos strictly in-memory over an encrypted TLS connection. When your photo is analyzed by the multimodal vision pipeline, it is never saved to our disks, databases, or training datasets.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2">
               <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/70">
-                <span className="font-bold text-neutral-800 block mb-1">No Image Logging</span>
+                <span className="font-bold text-neutral-800 block mb-1">Zero Server Image Logging</span>
                 <p className="text-neutral-500 text-[11px] leading-relaxed">
-                  Your raw portrait exists only for the duration of inference (~3 seconds) and is immediately discarded.
+                  Your raw portrait exists only for the duration of inference (~3 seconds) and is immediately discarded from memory.
                 </p>
               </div>
               <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/70">
-                <span className="font-bold text-neutral-800 block mb-1">Local Storage Retention</span>
+                <span className="font-bold text-neutral-800 block mb-1">Server-Side Key Isolation</span>
                 <p className="text-neutral-500 text-[11px] leading-relaxed">
-                  Your generated Style Profile (face shape, color palette, barber card) is retained exclusively in your local browser storage.
+                  All AI vision and stylist provider API keys reside strictly on backend environment variables, never accessible to client browser bundles.
                 </p>
               </div>
             </div>
@@ -168,6 +232,11 @@ export function SettingsContent() {
           </div>
         </div>
       </main>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
 
       <Footer />
     </div>

@@ -9,8 +9,7 @@ import { StyleProfile, OutfitCombination } from '@/lib/types';
 import { SAMPLE_STYLE_PROFILE } from '@/lib/mockData';
 import { getUserPreferences } from '@/lib/recommendations/preferencesStore';
 import { getRankedOutfits, ScoredOutfit } from '@/lib/recommendations/scoringEngine';
-import { Shirt, Sparkles, Sliders } from 'lucide-react';
-import Link from 'next/link';
+import { Shirt, Sliders } from 'lucide-react';
 
 export default function OutfitsPage() {
   const [profile, setProfile] = useState<StyleProfile>(SAMPLE_STYLE_PROFILE);
@@ -20,7 +19,7 @@ export default function OutfitsPage() {
   const recalculate = () => {
     const prefs = getUserPreferences();
     const scored = getRankedOutfits(prefs);
-    setRankedOutfits(scored);
+    setRankedOutfits(scored || []);
   };
 
   useEffect(() => {
@@ -38,6 +37,27 @@ export default function OutfitsPage() {
     window.addEventListener('facefit_preferences_changed', recalculate);
     return () => window.removeEventListener('facefit_preferences_changed', recalculate);
   }, []);
+
+  const clothingRecs = Array.isArray(profile?.clothingRecommendations) && profile.clothingRecommendations.length > 0
+    ? profile.clothingRecommendations
+    : [
+        {
+          category: 'Top',
+          clothingType: 'Structured Heavyweight Cotton Polo',
+          suggestedColors: ['Cream', 'Deep Espresso'],
+          fitGuidance: 'Straight cut with ribbed collar that frames the neck.',
+          aesthetic: 'Contemporary Casual',
+          occasion: 'Everyday / College',
+        },
+        {
+          category: 'Bottom',
+          clothingType: 'Single-Pleat Relaxed Chinos',
+          suggestedColors: ['Olive', 'Slate Charcoal'],
+          fitGuidance: 'Relaxed through the thigh with gentle taper to the shoe.',
+          aesthetic: 'Smart Casual',
+          occasion: 'Social / Work',
+        },
+      ];
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
@@ -69,30 +89,37 @@ export default function OutfitsPage() {
         </div>
 
         {/* Outfit Cards Grid with Scoring and Transparency */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {rankedOutfits.map((item, idx) => {
-            const outfitAdapter: OutfitCombination = {
-              id: item.outfit.id,
-              title: item.outfit.title,
-              aesthetic: item.outfit.styleCategory,
-              occasion: item.outfit.primaryOccasion,
-              pieces: item.outfit.pieces,
-              totalVibe: item.outfit.totalVibe,
-              budgetTier: item.outfit.budgetTier,
-            };
+        {rankedOutfits.length === 0 ? (
+          <div className="p-8 mb-12 rounded-2xl bg-white border border-neutral-200 text-center text-xs text-neutral-500">
+            No outfits found for the current filter criteria. Adjust your budget or occasion parameters to see more combinations.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            {rankedOutfits.map((item, idx) => {
+              const outfit = item?.outfit || {};
+              const outfitAdapter: OutfitCombination = {
+                id: outfit.id || `outfit-${idx + 1}`,
+                title: outfit.title || 'Curated Ensemble',
+                aesthetic: outfit.styleCategory || 'Smart Casual',
+                occasion: outfit.primaryOccasion || 'Everyday',
+                pieces: outfit.pieces || [],
+                totalVibe: outfit.totalVibe || 'Clean proportioned fit.',
+                budgetTier: outfit.budgetTier || 'Budget (Under ₹3000)',
+              };
 
-            return (
-              <OutfitFormulaCard
-                key={item.outfit.id}
-                outfit={outfitAdapter}
-                index={idx}
-                match={item.match}
-                ownedPiecesUsed={item.ownedPiecesUsed}
-                effectiveCostINR={item.finalCostWithOwnedINR}
-              />
-            );
-          })}
-        </div>
+              return (
+                <OutfitFormulaCard
+                  key={outfit.id || idx}
+                  outfit={outfitAdapter}
+                  index={idx}
+                  match={item?.match || { score: 85, rationale: 'Fits occasion profile.', matchTags: [] }}
+                  ownedPiecesUsed={item?.ownedPiecesUsed || []}
+                  effectiveCostINR={item?.finalCostWithOwnedINR || 2499}
+                />
+              );
+            })}
+          </div>
+        )}
 
         {/* Structural Garment Fit Protocol Guide */}
         <div className="luxury-card rounded-2xl p-6 sm:p-8 bg-white border border-neutral-200 shadow-2xs">
@@ -104,13 +131,13 @@ export default function OutfitsPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {profile.clothingRecommendations.map((item, idx) => (
+            {clothingRecs.map((item, idx) => (
               <div key={idx} className="p-4 rounded-xl bg-neutral-50 border border-neutral-200/70 text-xs">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-0.5">
                   {item.category}
                 </span>
-                <h4 className="font-bold text-neutral-900 mb-1">{item.clothingType}</h4>
-                <p className="text-[11px] text-neutral-600 leading-snug mb-2">
+                <h4 className="font-bold text-neutral-900 mb-1 break-words">{item.clothingType}</h4>
+                <p className="text-[11px] text-neutral-600 leading-snug mb-2 break-words">
                   {item.fitGuidance}
                 </p>
                 <div className="pt-2 border-t border-neutral-200 flex items-center justify-between text-[10px] text-neutral-500">

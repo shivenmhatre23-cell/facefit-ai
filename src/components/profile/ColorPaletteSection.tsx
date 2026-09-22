@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { ColorPalette } from '@/lib/types';
-import { Palette, Copy, Check, Sparkles, XCircle, CheckCircle2 } from 'lucide-react';
+import { Palette, Check, XCircle, CheckCircle2 } from 'lucide-react';
 
 interface ColorPaletteSectionProps {
-  palette: ColorPalette;
+  palette?: ColorPalette;
 }
 
 export function ColorPaletteSection({ palette }: ColorPaletteSectionProps) {
@@ -16,6 +16,18 @@ export function ColorPaletteSection({ palette }: ColorPaletteSectionProps) {
     setCopiedHex(hex);
     setTimeout(() => setCopiedHex(null), 1800);
   };
+
+  const swatches = palette?.swatches || [
+    { name: 'Espresso', hex: '#3B2F2F', role: 'primary' as const, explanation: 'Grounded deep neutral' },
+    { name: 'Terracotta', hex: '#C2593F', role: 'accent' as const, explanation: 'Warm facial contrast' },
+    { name: 'Olive Forest', hex: '#4A5B43', role: 'neutral' as const, explanation: 'Subtle earthy balance' },
+    { name: 'Warm Sand', hex: '#D7CEBE', role: 'neutral' as const, explanation: 'Soft illuminating base' },
+    { name: 'Amber Gold', hex: '#CF8A2C', role: 'accent' as const, explanation: 'Vibrant highlight' },
+    { name: 'Deep Slate', hex: '#263445', role: 'neutral' as const, explanation: 'Modern anchor' },
+  ];
+
+  const colorsToWear = palette?.colorsToWear || swatches.map((s) => s.name);
+  const colorsToAvoid = palette?.colorsToAvoid || ['Harsh Neon Green', 'Icy Electric Blue'];
 
   return (
     <div className="luxury-card rounded-2xl p-6 sm:p-7 bg-white border border-neutral-200/90 shadow-2xs h-full flex flex-col justify-between">
@@ -30,17 +42,17 @@ export function ColorPaletteSection({ palette }: ColorPaletteSectionProps) {
                 Color Architecture
               </span>
               <h3 className="text-base font-serif-editorial font-bold text-neutral-900">
-                {palette.seasonName}
+                {palette?.seasonName || 'Warm Harmonized Palette'}
               </h3>
             </div>
           </div>
           <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
-            {palette.contrastLevel}
+            {palette?.contrastLevel || 'Medium Contrast'}
           </span>
         </div>
 
-        <p className="text-xs text-neutral-600 leading-relaxed mb-5">
-          {palette.description}
+        <p className="text-xs text-neutral-600 leading-relaxed mb-5 break-words">
+          {palette?.description || 'Harmonious color combinations curated to elevate your skin tone, eye color, and natural contrast.'}
         </p>
 
         {/* 6 Interactive Swatches */}
@@ -49,12 +61,13 @@ export function ColorPaletteSection({ palette }: ColorPaletteSectionProps) {
             Personal Palette Swatches (Click to copy Hex)
           </span>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {palette.swatches.map((swatch, idx) => (
+            {swatches.map((swatch, idx) => (
               <button
                 key={idx}
                 onClick={() => handleCopyHex(swatch.hex)}
                 className="group relative flex flex-col items-center p-2 rounded-xl border border-neutral-200/80 bg-neutral-50/50 hover:bg-white hover:border-neutral-400 transition-all text-left cursor-pointer"
                 title={`Click to copy ${swatch.hex}`}
+                aria-label={`Copy hex code ${swatch.hex}`}
               >
                 <div
                   className="w-full h-10 rounded-lg mb-1.5 shadow-inner border border-black/5 relative overflow-hidden"
@@ -84,8 +97,8 @@ export function ColorPaletteSection({ palette }: ColorPaletteSectionProps) {
           <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Best Shades to Wear
           </span>
-          <p className="text-emerald-900 text-[11px] leading-snug">
-            {palette.colorsToWear.slice(0, 5).join(', ')}
+          <p className="text-emerald-900 text-[11px] leading-snug break-words">
+            {colorsToWear.slice(0, 5).join(', ')}
           </p>
         </div>
 
@@ -93,8 +106,8 @@ export function ColorPaletteSection({ palette }: ColorPaletteSectionProps) {
           <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 flex items-center gap-1">
             <XCircle className="w-3 h-3 text-rose-500" /> Shades to Sidestep
           </span>
-          <p className="text-neutral-600 text-[11px] leading-snug">
-            {palette.colorsToAvoid.slice(0, 4).join(', ')}
+          <p className="text-neutral-600 text-[11px] leading-snug break-words">
+            {colorsToAvoid.slice(0, 4).join(', ')}
           </p>
         </div>
       </div>

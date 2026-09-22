@@ -13,7 +13,6 @@ import {
   ChevronRight,
   Sparkles,
   Info,
-  CheckCircle2,
 } from 'lucide-react';
 
 interface HairstyleGridProps {
@@ -34,11 +33,13 @@ export function HairstyleGrid({
   const recalculateRanking = () => {
     const prefs = getUserPreferences();
     const scored = getRankedHairstyles({ shape: faceShape, confidence: 'high', proportionsSummary: '', featuresNotes: [] }, prefs);
-    setRankedList(scored);
+    setRankedList(scored || []);
 
     const map: Record<string, boolean> = {};
-    scored.forEach((item) => {
-      map[item.hair.id] = isHairstyleSaved(item.hair.id);
+    (scored || []).forEach((item) => {
+      if (item?.hair?.id) {
+        map[item.hair.id] = isHairstyleSaved(item.hair.id);
+      }
     });
     setSavedIds(map);
   };
@@ -64,7 +65,7 @@ export function HairstyleGrid({
     High: 'bg-rose-50 text-rose-800 border-rose-200',
   };
 
-  const displayList = rankedList.slice(0, 6);
+  const displayList = (rankedList || []).slice(0, 6);
 
   return (
     <section id="hairstyles-section" className="mb-14">
@@ -92,121 +93,131 @@ export function HairstyleGrid({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {displayList.map((item, idx) => {
-          const hair = item.hair;
-          const match = item.match;
-          const isSaved = Boolean(savedIds[hair.id]);
+      {displayList.length === 0 ? (
+        <div className="p-8 rounded-2xl bg-white border border-neutral-200 text-center text-xs text-neutral-500">
+          No hairstyles found matching the active filters. Click "Tune Parameters" to adjust your maintenance level or style preferences.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {displayList.map((item) => {
+            const hair = item?.hair || {};
+            const match = item?.match || { score: 85, rationale: 'Complements face geometry', matchTags: [] };
+            const isSaved = Boolean(savedIds[hair.id]);
 
-          // Adapter for barber modal
-          const hairForModal: HairstyleRecommendation = {
-            id: hair.id,
-            name: hair.name,
-            explanation: hair.baseExplanation,
-            whyItWorks: hair.whyItWorksBase,
-            maintenanceLevel: hair.maintenanceLevel,
-            stylingEffortMinutes: hair.stylingEffortMinutes,
-            suitableProducts: hair.suitableProducts,
-            barberInstructions: hair.barberInstructions,
-          };
+            const hairForModal: HairstyleRecommendation = {
+              id: hair.id || 'cut-1',
+              name: hair.name || 'Textured Crop',
+              explanation: hair.baseExplanation || 'Classic proportion-balancing haircut.',
+              whyItWorks: hair.whyItWorksBase || 'Frames natural contours.',
+              maintenanceLevel: hair.maintenanceLevel || 'Medium',
+              stylingEffortMinutes: hair.stylingEffortMinutes || 5,
+              suitableProducts: hair.suitableProducts || ['Matte Clay'],
+              barberInstructions: hair.barberInstructions || {
+                sidesAndBack: 'Clean taper fade',
+                topLength: '2 inches textured',
+                fadeOrTaperType: 'Taper Fade',
+                stylingFinish: 'Matte natural',
+              },
+            };
 
-          return (
-            <div
-              key={hair.id}
-              className="luxury-card rounded-2xl overflow-hidden bg-white border border-neutral-200/90 shadow-2xs flex flex-col justify-between group"
-            >
-              {/* Visual Frame */}
-              <div className="relative w-full h-44 bg-gradient-to-br from-neutral-100 via-stone-100 to-neutral-200 flex items-center justify-center overflow-hidden border-b border-neutral-100">
-                <div className="w-20 h-20 rounded-full bg-white/80 border border-neutral-300/60 shadow-xs flex items-center justify-center text-neutral-700 group-hover:scale-105 transition-transform">
-                  <Scissors className="w-8 h-8 text-amber-800/80" />
-                </div>
-
-                {/* Score Match Badge */}
-                <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-xs text-white text-[11px] font-bold">
-                  <span className="text-amber-400">★</span>
-                  <span>{match.score}% Match</span>
-                </div>
-
-                {/* Save Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleSave(hairForModal);
-                  }}
-                  className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-xs transition-all cursor-pointer shadow-xs ${
-                    isSaved
-                      ? 'bg-amber-600 text-white hover:bg-amber-700'
-                      : 'bg-white/80 hover:bg-white text-neutral-700 hover:text-neutral-950'
-                  }`}
-                  title={isSaved ? 'Remove from Saved' : 'Save Hairstyle'}
-                  aria-label={isSaved ? 'Unsave' : 'Save'}
-                >
-                  <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
-                </button>
-              </div>
-
-              {/* Card Body */}
-              <div className="p-6 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2.5">
-                    <span
-                      className={`px-2.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border ${
-                        maintenanceColors[hair.maintenanceLevel] || maintenanceColors.Low
-                      }`}
-                    >
-                      {hair.maintenanceLevel} Maintenance
-                    </span>
-                    <span className="flex items-center gap-1 text-[11px] font-medium text-neutral-500">
-                      <Clock className="w-3 h-3 text-neutral-400" />
-                      ~{hair.stylingEffortMinutes} mins daily
-                    </span>
+            return (
+              <div
+                key={hair.id || Math.random()}
+                className="luxury-card rounded-2xl overflow-hidden bg-white border border-neutral-200/90 shadow-2xs flex flex-col justify-between group"
+              >
+                {/* Visual Frame */}
+                <div className="relative w-full h-44 bg-gradient-to-br from-neutral-100 via-stone-100 to-neutral-200 flex items-center justify-center overflow-hidden border-b border-neutral-100">
+                  <div className="w-20 h-20 rounded-full bg-white/80 border border-neutral-300/60 shadow-xs flex items-center justify-center text-neutral-700 group-hover:scale-105 transition-transform">
+                    <Scissors className="w-8 h-8 text-amber-800/80" />
                   </div>
 
-                  <h3 className="text-base font-serif-editorial font-bold text-neutral-900 mb-1.5">
-                    {hair.name}
-                  </h3>
+                  {/* Score Match Badge */}
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-xs text-white text-[11px] font-bold">
+                    <span className="text-amber-400">★</span>
+                    <span>{match.score}% Match</span>
+                  </div>
 
-                  <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-                    {hair.baseExplanation}
-                  </p>
+                  {/* Save Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleSave(hairForModal);
+                    }}
+                    className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-xs transition-all cursor-pointer shadow-xs ${
+                      isSaved
+                        ? 'bg-amber-600 text-white hover:bg-amber-700'
+                        : 'bg-white/80 hover:bg-white text-neutral-700 hover:text-neutral-950'
+                    }`}
+                    title={isSaved ? 'Remove from Saved' : 'Save Hairstyle'}
+                    aria-label={isSaved ? 'Unsave' : 'Save'}
+                  >
+                    <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+                  </button>
+                </div>
 
-                  {/* TRANSPARENT "WHY RECOMMENDED" BOX */}
-                  <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/70 mb-4 space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1">
-                      <Info className="w-3 h-3 text-amber-700" /> Why this was recommended
-                    </span>
-                    <p className="text-[11px] text-amber-950 leading-relaxed">
-                      {match.rationale}
+                {/* Card Body */}
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2.5">
+                      <span
+                        className={`px-2.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border ${
+                          maintenanceColors[hair.maintenanceLevel] || maintenanceColors.Low
+                        }`}
+                      >
+                        {hair.maintenanceLevel || 'Medium'} Maintenance
+                      </span>
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-neutral-500">
+                        <Clock className="w-3 h-3 text-neutral-400" />
+                        ~{hair.stylingEffortMinutes || 5} mins daily
+                      </span>
+                    </div>
+
+                    <h3 className="text-base font-serif-editorial font-bold text-neutral-900 mb-1.5 break-words">
+                      {hair.name}
+                    </h3>
+
+                    <p className="text-xs text-neutral-500 leading-relaxed mb-4 break-words">
+                      {hair.baseExplanation}
                     </p>
-                    {match.matchTags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {match.matchTags.map((t: string, i: number) => (
-                          <span
-                            key={i}
-                            className="px-2 py-0.5 rounded text-[9px] font-bold bg-white text-amber-900 border border-amber-200"
-                          >
-                            ✓ {t}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
 
-                {/* Barber Card Trigger */}
-                <button
-                  onClick={() => setSelectedHair(hairForModal)}
-                  className="w-full py-2.5 px-4 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-900 hover:text-white hover:border-neutral-900 text-neutral-800 text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer group/btn"
-                >
-                  <Scissors className="w-3.5 h-3.5 text-amber-700 group-hover/btn:text-amber-400 transition-colors" />
-                  Barber Instructions Card
-                  <ChevronRight className="w-3.5 h-3.5 text-neutral-400 group-hover/btn:text-white transition-colors" />
-                </button>
+                    {/* TRANSPARENT "WHY RECOMMENDED" BOX */}
+                    <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/70 mb-4 space-y-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1">
+                        <Info className="w-3 h-3 text-amber-700" /> Why this was recommended
+                      </span>
+                      <p className="text-[11px] text-amber-950 leading-relaxed break-words">
+                        {match.rationale}
+                      </p>
+                      {Array.isArray(match.matchTags) && match.matchTags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {match.matchTags.map((t: string, i: number) => (
+                            <span
+                              key={i}
+                              className="px-2 py-0.5 rounded text-[9px] font-bold bg-white text-amber-900 border border-amber-200"
+                            >
+                              ✓ {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Barber Card Trigger */}
+                  <button
+                    onClick={() => setSelectedHair(hairForModal)}
+                    className="w-full py-2.5 px-4 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-900 hover:text-white hover:border-neutral-900 text-neutral-800 text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer group/btn"
+                  >
+                    <Scissors className="w-3.5 h-3.5 text-amber-700 group-hover/btn:text-amber-400 transition-colors" />
+                    Barber Instructions Card
+                    <ChevronRight className="w-3.5 h-3.5 text-neutral-400 group-hover/btn:text-white transition-colors" />
+                  </button>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       <BarberInstructionModal
         hairstyle={selectedHair}

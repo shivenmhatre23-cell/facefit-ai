@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { StyleProfile, ChatMessage } from '@/lib/types';
-import { X, Send, Sparkles, Bot, Loader2 } from 'lucide-react';
+import { X, Send, Bot, Loader2 } from 'lucide-react';
 
 interface StylistDrawerProps {
   profile: StyleProfile;
@@ -10,7 +10,6 @@ interface StylistDrawerProps {
   onClose: () => void;
 }
 
-// Exactly as specified by user
 const SUGGESTED_PROMPTS = [
   'What should I wear tomorrow?',
   'Give me a low-maintenance hairstyle.',
@@ -24,22 +23,35 @@ export function StylistDrawer({ profile, isOpen, onClose }: StylistDrawerProps) 
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  const faceShape = profile?.faceGeometry?.shape || 'Balanced Oval';
+  const hairTexture = profile?.hairAnalysis?.texture || 'Natural';
+  const season = profile?.colorPalette?.seasonName || 'Warm Harmonized';
+
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      const faceShape = profile.faceGeometry.shape;
-      const season = profile.colorPalette.seasonName;
       setMessages([
         {
           id: 'msg-welcome',
           role: 'assistant',
-          content: `Hello! I'm your **FaceFit AI Stylist**. I've reviewed your **${faceShape}** facial geometry, **${profile.hairAnalysis.texture}** hair texture, and **${season}** color palette.
+          content: `Hello! I'm your **FaceFit AI Stylist**. I've reviewed your **${faceShape}** facial geometry, **${hairTexture}** hair texture, and **${season}** color palette.
 
 How can I help you refine your style today? You can choose one of the suggestions below or ask any specific wardrobe or grooming question!`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
     }
-  }, [isOpen, profile, messages.length]);
+  }, [isOpen, faceShape, hairTexture, season, messages.length]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -72,7 +84,8 @@ How can I help you refine your style today? You can choose one of the suggestion
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get stylist advice.');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to get stylist advice.');
       }
 
       const reader = response.body?.getReader();
@@ -110,14 +123,15 @@ How can I help you refine your style today? You can choose one of the suggestion
         );
       }
     } catch (err: unknown) {
-      console.error('Stylist chat error:', err);
+      const msg = err instanceof Error ? err.message : 'Connection hitch';
       setMessages((prev) => [
         ...prev,
         {
           id: 'msg-err-' + Date.now(),
           role: 'assistant',
-          content:
-            "I'm momentarily having trouble connecting to the styling engine. Try asking again, or click one of the suggested prompts below!",
+          content: msg.includes('rate limit')
+            ? `Stylist notice: ${msg}`
+            : "I'm having trouble connecting to the styling engine. Try asking again, or click one of the suggested prompts below!",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -130,7 +144,12 @@ How can I help you refine your style today? You can choose one of the suggestion
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs animate-fadeIn">
-      <div className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col border-l border-neutral-200 animate-slideLeft">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="AI Stylist Drawer"
+        className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col border-l border-neutral-200 animate-slideLeft text-neutral-900"
+      >
         {/* Top Header */}
         <div className="p-4 sm:p-5 border-b border-neutral-200 flex items-center justify-between bg-neutral-50/70">
           <div className="flex items-center gap-3">
@@ -143,7 +162,7 @@ How can I help you refine your style today? You can choose one of the suggestion
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
               </div>
               <p className="text-[11px] text-neutral-500 font-mono">
-                Grounded on your {profile.faceGeometry.shape} profile
+                Grounded on your {faceShape} profile
               </p>
             </div>
           </div>
@@ -157,7 +176,7 @@ How can I help you refine your style today? You can choose one of the suggestion
           </button>
         </div>
 
-        {/* Suggested Prompts Bar - Exact requested prompts */}
+        {/* Suggested Prompts Bar */}
         <div className="p-3 bg-white border-b border-neutral-100 overflow-x-auto whitespace-nowrap flex items-center gap-2 no-scrollbar">
           {SUGGESTED_PROMPTS.map((prompt, idx) => (
             <button
@@ -185,7 +204,7 @@ How can I help you refine your style today? You can choose one of the suggestion
               )}
 
               <div
-                className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed ${
+                className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed break-words ${
                   msg.role === 'user'
                     ? 'bg-neutral-900 text-white rounded-tr-xs'
                     : 'bg-neutral-50 border border-neutral-200/90 text-neutral-800 rounded-tl-xs whitespace-pre-wrap'

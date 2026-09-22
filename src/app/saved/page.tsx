@@ -10,7 +10,9 @@ import {
   toggleSaveHairstyle,
   toggleSaveOutfit,
 } from '@/lib/savedStore';
+import { getActiveSession, AuthSession } from '@/lib/auth/authStore';
 import { BarberInstructionModal } from '@/components/profile/BarberInstructionModal';
+import { AuthModal } from '@/components/auth/AuthModal';
 import {
   Bookmark,
   Scissors,
@@ -18,8 +20,8 @@ import {
   Trash2,
   Sparkles,
   ArrowRight,
-  Clock,
-  ExternalLink,
+  UserCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -28,16 +30,23 @@ export default function SavedPage() {
   const [savedHairstyles, setSavedHairstyles] = useState<HairstyleRecommendation[]>([]);
   const [savedOutfits, setSavedOutfits] = useState<OutfitCombination[]>([]);
   const [selectedHair, setSelectedHair] = useState<HairstyleRecommendation | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   const loadSaved = () => {
     setSavedHairstyles(getSavedHairstyles());
     setSavedOutfits(getSavedOutfits());
+    setSession(getActiveSession());
   };
 
   useEffect(() => {
     loadSaved();
     window.addEventListener('facefit_saved_changed', loadSaved);
-    return () => window.removeEventListener('facefit_saved_changed', loadSaved);
+    window.addEventListener('facefit_auth_changed', loadSaved);
+    return () => {
+      window.removeEventListener('facefit_saved_changed', loadSaved);
+      window.removeEventListener('facefit_auth_changed', loadSaved);
+    };
   }, []);
 
   const handleRemoveHairstyle = (hair: HairstyleRecommendation) => {
@@ -54,7 +63,7 @@ export default function SavedPage() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-8 border-b border-neutral-200 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-8 border-b border-neutral-200 mb-6">
           <div>
             <div className="flex items-center gap-2 mb-1 text-amber-700 text-[10px] font-bold uppercase tracking-widest">
               <Bookmark className="w-3.5 h-3.5" />
@@ -95,6 +104,24 @@ export default function SavedPage() {
           </div>
         </div>
 
+        {/* Unauthorized / Guest Sync Banner */}
+        {(!session || session.user.role === 'guest') && (
+          <div className="p-4 mb-8 rounded-2xl bg-amber-50/70 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900">
+            <div className="flex items-center gap-2.5">
+              <UserCheck className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>
+                <strong>Viewing Local Guest Lookbook:</strong> Items are saved in your current browser memory. Sign in to cloud-sync your lookbook across mobile and desktop.
+              </span>
+            </div>
+            <button
+              onClick={() => setIsAuthOpen(true)}
+              className="px-4 py-1.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold self-start sm:self-auto transition-colors cursor-pointer shrink-0 shadow-xs"
+            >
+              Sign In to Sync
+            </button>
+          </div>
+        )}
+
         {/* Tab 1: Saved Hairstyles */}
         {activeTab === 'hairstyles' && (
           <div>
@@ -128,7 +155,7 @@ export default function SavedPage() {
                     <div className="p-6">
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <span className="px-2.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-neutral-100 text-neutral-700 border border-neutral-200">
-                          {hair.maintenanceLevel} Maintenance
+                          {hair.maintenanceLevel || 'Medium'} Maintenance
                         </span>
                         <button
                           onClick={() => handleRemoveHairstyle(hair)}
@@ -143,7 +170,7 @@ export default function SavedPage() {
                         {hair.name}
                       </h3>
                       <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-                        {hair.explanation}
+                        {hair.explanation || hair.whyItWorks}
                       </p>
 
                       <div className="p-3 rounded-xl bg-neutral-50 border border-neutral-200/70 text-xs mb-4">
@@ -151,7 +178,7 @@ export default function SavedPage() {
                           Barber Specification
                         </span>
                         <p className="text-[11px] text-neutral-700 font-medium">
-                          {hair.barberInstructions.sidesAndBack}
+                          {hair.barberInstructions?.sidesAndBack || 'Natural scissor fade on sides and back'}
                         </p>
                       </div>
                     </div>
@@ -205,7 +232,7 @@ export default function SavedPage() {
                     <div className="p-6">
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
-                          {outfit.aesthetic}
+                          {outfit.aesthetic || 'Smart Casual'}
                         </span>
                         <button
                           onClick={() => handleRemoveOutfit(outfit)}
@@ -220,11 +247,11 @@ export default function SavedPage() {
                         {outfit.title}
                       </h3>
                       <span className="text-[11px] text-neutral-400 block mb-4">
-                        Occasion: {outfit.occasion}
+                        Occasion: {outfit.occasion || 'Everyday'}
                       </span>
 
                       <div className="space-y-2 mb-2">
-                        {outfit.pieces.map((piece, i) => (
+                        {(outfit.pieces || []).map((piece, i) => (
                           <div key={i} className="p-2 rounded-lg bg-neutral-50 text-xs">
                             <span className="font-semibold text-neutral-800 text-[11px] block truncate">
                               {piece.item}
@@ -239,7 +266,7 @@ export default function SavedPage() {
 
                     <div className="p-4 bg-neutral-50/70 border-t border-neutral-100 flex items-center justify-between text-xs">
                       <span className="font-mono text-[11px] font-semibold text-neutral-700">
-                        {outfit.budgetTier}
+                        {outfit.budgetTier || 'Budget'}
                       </span>
                       <Link
                         href="/stylist"
@@ -258,6 +285,13 @@ export default function SavedPage() {
         <BarberInstructionModal
           hairstyle={selectedHair}
           onClose={() => setSelectedHair(null)}
+        />
+
+        <AuthModal
+          isOpen={isAuthOpen}
+          onClose={() => setIsAuthOpen(false)}
+          title="Sign In to Sync Lookbook"
+          subtitle="Keep your saved haircuts, styling notes, and outfit formulas accessible across all devices."
         />
       </main>
 

@@ -13,29 +13,54 @@ import {
   Menu,
   X,
   UserCheck,
+  User,
+  LogOut,
+  ChevronDown,
 } from 'lucide-react';
 import { getSavedHairstyles, getSavedOutfits } from '@/lib/savedStore';
+import { getActiveSession, clearAuthSession, AuthSession } from '@/lib/auth/authStore';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 export function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
   const updateCounts = () => {
     const total = getSavedHairstyles().length + getSavedOutfits().length;
     setSavedCount(total);
   };
 
+  const updateSession = () => {
+    setSession(getActiveSession());
+  };
+
   useEffect(() => {
     updateCounts();
+    updateSession();
+
     window.addEventListener('facefit_saved_changed', updateCounts);
-    return () => window.removeEventListener('facefit_saved_changed', updateCounts);
+    window.addEventListener('facefit_auth_changed', updateSession);
+
+    return () => {
+      window.removeEventListener('facefit_saved_changed', updateCounts);
+      window.removeEventListener('facefit_auth_changed', updateSession);
+    };
   }, []);
 
-  // Close mobile menu on route change
+  // Close mobile menu and dropdown on route change
   useEffect(() => {
     setMobileMenuOpen(false);
+    setUserDropdownOpen(false);
   }, [pathname]);
+
+  const handleSignOut = () => {
+    clearAuthSession();
+    setUserDropdownOpen(false);
+  };
 
   const navLinks = [
     { label: 'Dashboard', href: '/profile', icon: UserCheck },
@@ -97,11 +122,68 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Primary CTA & Mobile Toggle */}
-        <div className="flex items-center gap-2.5">
+        {/* Right CTA / Session Area */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* User Session status */}
+          {session && session.user.role === 'member' ? (
+            <div className="relative">
+              <button
+                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 transition-colors text-xs font-semibold text-neutral-800 cursor-pointer"
+              >
+                <div className="w-5 h-5 rounded-full bg-amber-700 text-white text-[10px] flex items-center justify-center font-bold">
+                  {session.user.avatarInitials}
+                </div>
+                <span className="hidden sm:inline">{session.user.name}</span>
+                <ChevronDown className="w-3 h-3 text-neutral-400" />
+              </button>
+
+              {userDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl border border-neutral-200 shadow-xl py-1.5 z-50 animate-fadeIn text-xs">
+                  <div className="px-3.5 py-2 border-b border-neutral-100">
+                    <span className="text-[10px] text-neutral-400 uppercase tracking-wider block">Signed in as</span>
+                    <span className="font-semibold text-neutral-900 truncate block">{session.user.email}</span>
+                  </div>
+                  <Link
+                    href="/saved"
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="flex items-center gap-2 px-3.5 py-2 hover:bg-neutral-50 text-neutral-700 transition-colors"
+                  >
+                    <Bookmark className="w-3.5 h-3.5 text-neutral-400" />
+                    <span>My Lookbook</span>
+                  </Link>
+                  <Link
+                    href="/settings"
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="flex items-center gap-2 px-3.5 py-2 hover:bg-neutral-50 text-neutral-700 transition-colors"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-neutral-400" />
+                    <span>Settings & Privacy</span>
+                  </Link>
+                  <div className="border-t border-neutral-100 my-1" />
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full text-left flex items-center gap-2 px-3.5 py-2 hover:bg-rose-50 text-rose-700 transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 rounded-full border border-neutral-200/80 transition-colors cursor-pointer"
+            >
+              <User className="w-3.5 h-3.5 text-neutral-400" />
+              <span className="hidden sm:inline">Sign In</span>
+            </button>
+          )}
+
           <Link
             href="/analyze"
-            className="inline-flex items-center justify-center px-4 py-2 text-xs font-semibold tracking-wide text-white bg-neutral-900 hover:bg-neutral-800 rounded-full transition-all shadow-xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+            className="inline-flex items-center justify-center px-3.5 sm:px-4 py-2 text-xs font-semibold tracking-wide text-white bg-neutral-900 hover:bg-neutral-800 rounded-full transition-all shadow-xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
           >
             Create Style Profile
           </Link>
@@ -146,8 +228,36 @@ export function Navbar() {
               </Link>
             );
           })}
+
+          <div className="pt-2 border-t border-neutral-100 flex items-center justify-between px-3.5 text-xs">
+            {session && session.user.role === 'member' ? (
+              <button
+                onClick={handleSignOut}
+                className="text-rose-700 font-semibold flex items-center gap-1.5 py-2 cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out ({session.user.name})</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setIsAuthModalOpen(true);
+                }}
+                className="text-neutral-800 font-semibold flex items-center gap-1.5 py-2 cursor-pointer"
+              >
+                <User className="w-3.5 h-3.5 text-amber-700" />
+                <span>Sign In to Sync Looks</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </header>
   );
 }

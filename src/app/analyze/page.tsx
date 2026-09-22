@@ -23,7 +23,7 @@ export default function AnalyzePage() {
   };
 
   const handleStartAnalysis = async () => {
-    if (!selectedImage) return;
+    if (!selectedImage || isAnalyzing) return;
 
     setIsAnalyzing(true);
     setErrorMessage(null);
@@ -41,33 +41,60 @@ export default function AnalyzePage() {
         throw new Error(data.error || 'Failed to analyze portrait.');
       }
 
-      const profileWithPreview = {
-        ...data.profile,
-        userSelfiePreviewUrl: selectedImage,
-      };
-
+      // PRIVACY HARDENING: Store user photo preview ONLY in ephemeral sessionStorage.
+      // Do NOT persist raw facial base64 to unencrypted permanent localStorage.
       if (typeof window !== 'undefined') {
-        localStorage.setItem('facefit_active_profile', JSON.stringify(profileWithPreview));
+        sessionStorage.setItem('facefit_preview_image', selectedImage);
+
+        // Store structured profile JSON (without embedding the raw face image) in localStorage
+        const profileWithoutRawPhoto = {
+          ...data.profile,
+          userSelfiePreviewUrl: undefined,
+        };
+        localStorage.setItem('facefit_active_profile', JSON.stringify(profileWithoutRawPhoto));
       }
 
       router.push('/profile');
     } catch (err: unknown) {
-      console.error('Analysis fallback:', err);
-      const fallbackProfile = {
-        ...SAMPLE_STYLE_PROFILE,
-        userSelfiePreviewUrl: selectedImage,
-      };
+      const msg = err instanceof Error ? err.message : 'Analysis failed. Please try again.';
+      console.warn('Analysis pipeline warning:', msg);
+
+      // In case of rate limit or explicit error, show message to user rather than silent failure
+      if (msg.includes('rate limit') || msg.includes('Wait') || msg.includes('Too many')) {
+        setErrorMessage(msg);
+        setIsAnalyzing(false);
+        return;
+      }
+
+      // Resilient fallback for demo continuity
       if (typeof window !== 'undefined') {
-        localStorage.setItem('facefit_active_profile', JSON.stringify(fallbackProfile));
+        sessionStorage.setItem('facefit_preview_image', selectedImage);
+        localStorage.setItem('facefit_active_profile', JSON.stringify(SAMPLE_STYLE_PROFILE));
       }
       router.push('/profile?fallback=true');
     }
   };
 
   const handleUseDemoModel = () => {
-    const demoSvg = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500"><rect width="100%" height="100%" fill="%23f5f5f4"/><circle cx="200" cy="190" r="75" fill="%23d6d3d1"/><ellipse cx="200" cy="400" rx="130" ry="110" fill="%23a8a29e"/><text x="200" y="480" font-family="sans-serif" font-size="14" fill="%2378716c" text-anchor="middle">Demo Portrait Model</text></svg>';
-    setSelectedImage(demoSvg);
-    setErrorMessage(null);
+    // Standard high-contrast synthetic sample avatar
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 500;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#f5f5f4';
+      ctx.fillRect(0, 0, 400, 500);
+      ctx.fillStyle = '#d6d3d1';
+      ctx.beginPath();
+      ctx.arc(200, 190, 75, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#a8a29e';
+      ctx.beginPath();
+      ctx.ellipse(200, 400, 130, 110, 0, 0, Math.PI * 2);
+      ctx.fill();
+      setSelectedImage(canvas.toDataURL('image/jpeg', 0.85));
+      setErrorMessage(null);
+    }
   };
 
   return (
@@ -105,6 +132,7 @@ export default function AnalyzePage() {
                   onClick={() => setSelectedImage(null)}
                   className="absolute top-3 right-3 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-xs transition-colors cursor-pointer"
                   title="Remove and choose another image"
+                  aria-label="Remove image"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -120,14 +148,16 @@ export default function AnalyzePage() {
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
                 <button
                   onClick={() => setSelectedImage(null)}
-                  className="w-full sm:w-1/2 py-3 px-4 rounded-xl border border-neutral-200 text-neutral-700 hover:bg-neutral-50 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  disabled={isAnalyzing}
+                  className="w-full sm:w-1/2 py-3 px-4 rounded-xl border border-neutral-200 text-neutral-700 hover:bg-neutral-50 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   <RotateCcw className="w-4 h-4 text-neutral-400" />
                   Remove / Re-upload
                 </button>
                 <button
                   onClick={handleStartAnalysis}
-                  className="w-full sm:w-1/2 py-3 px-4 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md cursor-pointer"
+                  disabled={isAnalyzing}
+                  className="w-full sm:w-1/2 py-3 px-4 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md cursor-pointer disabled:opacity-50"
                 >
                   <Sparkles className="w-4 h-4 text-amber-400" />
                   Build Style Profile
@@ -184,10 +214,10 @@ export default function AnalyzePage() {
             </div>
           )}
 
-          {/* Privacy Messaging */}
-          <div className="mt-6 pt-4 border-t border-neutral-100 flex items-center justify-center gap-2 text-[11px] text-neutral-400 text-center">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>Ephemeral privacy: Your photo is analyzed in temporary memory and never stored on disk or shared.</span>
+          {/* Verbatim Privacy Notice */}
+          <div className="mt-6 pt-4 border-t border-neutral-100 flex items-center justify-center gap-2 text-[11px] text-neutral-500 text-center leading-relaxed">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Your photo is used to generate your Style Profile. We minimize storage and do not use your image for unrelated purposes.</span>
           </div>
         </div>
       </main>

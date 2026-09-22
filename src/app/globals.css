@@ -17,12 +17,22 @@
 :root {
   --background: #fafafa;
   --foreground: #111827;
+  color-scheme: light;
 }
 
-body {
+html, body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Accessible focus ring for keyboard navigation */
+:focus-visible {
+  outline: 2px solid #d97706;
+  outline-offset: 2px;
 }
 
 /* Editorial Serif Utility */
