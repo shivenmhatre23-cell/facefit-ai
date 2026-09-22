@@ -1,4 +1,5 @@
 import { LookPreviewRequest, LookPreviewResult } from '../../types';
+import { generateRealisticHairSVG } from './hairRenderer';
 
 /**
  * Service for generating stylized AI Look Previews ("Try This Look").
@@ -16,10 +17,10 @@ export class LookPreviewService {
     const { type, targetName, targetDetails, baseImage } = request;
 
     // Simulate brief AI synthesis latency for realistic UX
-    await new Promise((res) => setTimeout(res, 600));
+    await new Promise((res) => setTimeout(res, 500));
 
     // Generate clean SVG visual overlay that renders cleanly in both browser and mobile
-    const previewUrl = this.synthesizeStylizedPreview(type, targetName, targetDetails, baseImage);
+    const previewUrl = synthesizeLookPreviewSvgUrl(type, targetName, targetDetails, baseImage);
 
     const styleNotes = [
       type === 'hairstyle'
@@ -38,109 +39,36 @@ export class LookPreviewService {
         'Approximate AI preview for conceptual styling direction only. Real-world hair texture, lighting, and tailoring may naturally differ from algorithmic simulation.',
     };
   }
+}
 
-  private synthesizeStylizedPreview(
-    type: 'hairstyle' | 'outfit' | 'complete_look',
-    targetName: string,
-    targetDetails: Record<string, any> = {},
-    baseImage?: string
-  ): string {
-    const isHair = type === 'hairstyle';
-    const isOutfit = type === 'outfit';
-    const isComplete = type === 'complete_look';
+export function synthesizeLookPreviewSvgUrl(
+  type: 'hairstyle' | 'outfit' | 'complete_look',
+  targetName: string,
+  targetDetails: Record<string, any> = {},
+  baseImage?: string
+): string {
+  const isHair = type === 'hairstyle';
+  const isOutfit = type === 'outfit';
+  const isComplete = type === 'complete_look';
 
-    // Tone & customization parameters
-    const hairColor = targetDetails.hairColor || targetDetails.color || '#241C18';
-    const garmentColor = targetDetails.garmentColor || targetDetails.color || '#2C3A47';
-    const accentColor = targetDetails.accentColor || '#D7CEBE';
-    const offsetY = typeof targetDetails.verticalOffset === 'number' ? targetDetails.verticalOffset : 0;
-    const scale = typeof targetDetails.scale === 'number' ? targetDetails.scale : 1.0;
-    const title = targetName || (isHair ? 'Textured Crop' : 'Campus Smart Casual');
+  // Tone & customization parameters
+  const hairColor = targetDetails.hairColor || targetDetails.color || '#241C18';
+  const garmentColor = targetDetails.garmentColor || targetDetails.color || '#2C3A47';
+  const accentColor = targetDetails.accentColor || '#D7CEBE';
+  const offsetY = typeof targetDetails.verticalOffset === 'number' ? targetDetails.verticalOffset : 0;
+  const scale = typeof targetDetails.scale === 'number' ? targetDetails.scale : 1.0;
+  const title = targetName || (isHair ? 'Textured Crop' : 'Campus Smart Casual');
 
     const lowerName = (targetName || '').toLowerCase();
 
-    // 1. HAIRSTYLE OVERLAY GEOMETRY
+    // 1. HAIRSTYLE OVERLAY GEOMETRY (Photorealistic Multi-Layer Organic Strands)
     const renderHairstyleSVG = () => {
-      let hairPaths = '';
-
-      if (lowerName.includes('quiff') || lowerName.includes('pompadour') || lowerName.includes('sweep')) {
-        // High textured quiff / pompadour swept upward
-        hairPaths = `
-          <!-- Quiff Body & Volume Roll -->
-          <path d="M 215 235 C 205 130, 310 110, 385 140 C 400 160, 395 210, 385 240 C 365 210, 340 185, 300 185 C 250 185, 230 215, 215 235 Z" fill="url(#hairGrad)" filter="url(#hairShadow)"/>
-          <!-- Dynamic Upward Strands -->
-          <path d="M 230 205 Q 260 145 310 135 Q 360 140 375 180" stroke="url(#hairHighlight)" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"/>
-          <path d="M 255 195 Q 285 140 330 145" stroke="url(#hairHighlight)" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.75"/>
-          <!-- Low Taper Fade Sides -->
-          <path d="M 210 240 Q 215 295 220 310 Q 224 280 228 250 Z" fill="url(#fadeLeft)" opacity="0.9"/>
-          <path d="M 390 240 Q 385 295 380 310 Q 376 280 372 250 Z" fill="url(#fadeRight)" opacity="0.9"/>
-        `;
-      } else if (lowerName.includes('buzz') || lowerName.includes('crew')) {
-        // Clean structured buzz cut / short crew
-        hairPaths = `
-          <!-- Crisp Scalp Contour -->
-          <path d="M 215 245 C 215 165, 385 165, 385 245 C 375 220, 350 205, 300 205 C 250 205, 225 220, 215 245 Z" fill="url(#hairGrad)" opacity="0.92"/>
-          <!-- Sharp Temple Lineup -->
-          <path d="M 218 245 L 230 232 L 250 235" stroke="${hairColor}" stroke-width="3" stroke-linecap="round"/>
-          <path d="M 382 245 L 370 232 L 350 235" stroke="${hairColor}" stroke-width="3" stroke-linecap="round"/>
-          <!-- Skin Fade Gradients -->
-          <path d="M 215 245 Q 218 290 222 305 Z" fill="url(#fadeLeft)"/>
-          <path d="M 385 245 Q 382 290 378 305 Z" fill="url(#fadeRight)"/>
-        `;
-      } else if (lowerName.includes('wolf') || lowerName.includes('curtain') || lowerName.includes('fringe') || lowerName.includes('shag')) {
-        // Textured layered fringe / wolf cut / curtain bangs
-        hairPaths = `
-          <!-- Top Crown & Feathered Outer Volume -->
-          <path d="M 205 245 C 195 140, 405 140, 395 245 C 385 220, 355 180, 300 180 C 245 180, 215 220, 205 245 Z" fill="url(#hairGrad)" filter="url(#hairShadow)"/>
-          <!-- Center Split Curtain Strands -->
-          <path d="M 220 220 Q 250 205 285 235 Q 290 245 282 258 Q 255 245 230 245 Z" fill="url(#hairGrad)"/>
-          <path d="M 380 220 Q 350 205 315 235 Q 310 245 318 258 Q 345 245 370 245 Z" fill="url(#hairGrad)"/>
-          <!-- Soft Whisps along Brow Line -->
-          <path d="M 270 230 Q 285 250 292 240 Q 305 250 320 230" stroke="url(#hairHighlight)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-          <!-- Ear Feathering -->
-          <path d="M 205 245 Q 198 280 205 300 Q 212 280 216 250 Z" fill="url(#hairGrad)" opacity="0.95"/>
-          <path d="M 395 245 Q 402 280 395 300 Q 388 280 384 250 Z" fill="url(#hairGrad)" opacity="0.95"/>
-        `;
-      } else if (lowerName.includes('curl') || lowerName.includes('coil')) {
-        // Textured curly top with tapered sides
-        hairPaths = `
-          <!-- Volumetric Curl Ring Clusters -->
-          <circle cx="250" cy="180" r="28" fill="url(#hairGrad)"/>
-          <circle cx="285" cy="165" r="32" fill="url(#hairGrad)"/>
-          <circle cx="325" cy="165" r="30" fill="url(#hairGrad)"/>
-          <circle cx="355" cy="185" r="26" fill="url(#hairGrad)"/>
-          <circle cx="230" cy="210" r="22" fill="url(#hairGrad)"/>
-          <circle cx="270" cy="205" r="24" fill="url(#hairGrad)"/>
-          <circle cx="305" cy="205" r="25" fill="url(#hairGrad)"/>
-          <circle cx="340" cy="210" r="23" fill="url(#hairGrad)"/>
-          <circle cx="370" cy="210" r="20" fill="url(#hairGrad)"/>
-          <!-- Foreground Curl Highlights -->
-          <path d="M 260 190 Q 275 180 270 195 Q 265 210 280 205" stroke="url(#hairHighlight)" stroke-width="3" fill="none"/>
-          <path d="M 315 190 Q 330 180 325 195 Q 320 210 335 205" stroke="url(#hairHighlight)" stroke-width="3" fill="none"/>
-          <!-- Clean Taper Fade on Temples -->
-          <path d="M 212 245 Q 216 295 220 310 Q 224 280 228 250 Z" fill="url(#fadeLeft)" opacity="0.95"/>
-          <path d="M 388 245 Q 384 295 380 310 Q 376 280 372 250 Z" fill="url(#fadeRight)" opacity="0.95"/>
-        `;
-      } else {
-        // Default: Modern Textured Crop with Low Taper Fade
-        hairPaths = `
-          <!-- Crown & Texture Silhouette -->
-          <path d="M 210 245 C 205 150, 395 150, 390 245 C 380 215, 350 185, 300 185 C 250 185, 220 215, 210 245 Z" fill="url(#hairGrad)" filter="url(#hairShadow)"/>
-          <!-- Point-Cut Textured Fringe Laying Forward -->
-          <path d="M 225 232 L 245 248 L 260 236 L 280 250 L 300 238 L 320 252 L 340 238 L 360 248 L 375 232 C 355 205, 245 205, 225 232 Z" fill="url(#hairGrad)"/>
-          <!-- Individual Fringe Texture Highlights -->
-          <path d="M 245 220 L 255 242 M 280 218 L 290 245 M 315 218 L 325 245 M 350 220 L 358 242" stroke="url(#hairHighlight)" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
-          <!-- Low Skin Taper Fade along Sides -->
-          <path d="M 208 245 Q 212 295 216 312 Q 220 280 224 250 Z" fill="url(#fadeLeft)" opacity="0.9"/>
-          <path d="M 392 245 Q 388 295 384 312 Q 380 280 376 250 Z" fill="url(#fadeRight)" opacity="0.9"/>
-        `;
-      }
-
-      return `
-        <g transform="translate(300, ${220 + offsetY}) scale(${scale}) translate(-300, -220)">
-          ${hairPaths}
-        </g>
-      `;
+      return generateRealisticHairSVG(targetName, hairColor, {
+        x: 300,
+        y: 220 + offsetY,
+        scaleX: scale,
+        scaleY: scale,
+      });
     };
 
     // 2. OUTFIT OVERLAY GEOMETRY
@@ -235,8 +163,16 @@ export class LookPreviewService {
       <stop offset="100%" stop-color="#0E0B09"/>
     </linearGradient>
     <linearGradient id="hairHighlight" x1="0%" y1="0%" x2="100%" y2="50%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.25"/>
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.3"/>
       <stop offset="100%" stop-color="#000000" stop-opacity="0.3"/>
+    </linearGradient>
+    <linearGradient id="taperFadeLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="${hairColor}" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="${hairColor}" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="taperFadeRight" x1="100%" y1="0%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="${hairColor}" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="${hairColor}" stop-opacity="0.95"/>
     </linearGradient>
     <linearGradient id="fadeLeft" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="${hairColor}" stop-opacity="0.15"/>
@@ -246,6 +182,13 @@ export class LookPreviewService {
       <stop offset="0%" stop-color="${hairColor}" stop-opacity="0.15"/>
       <stop offset="100%" stop-color="${hairColor}" stop-opacity="0.95"/>
     </linearGradient>
+    <filter id="featherGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
 
     <!-- Garment Shading Gradients -->
     <linearGradient id="garmentGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -302,7 +245,6 @@ export class LookPreviewService {
 `.trim();
 
     return `data:image/svg+xml;utf8,${encodeURIComponent(svgString)}`;
-  }
 }
 
 export const lookPreviewService = new LookPreviewService();

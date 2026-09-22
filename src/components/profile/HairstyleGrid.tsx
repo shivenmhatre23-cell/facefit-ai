@@ -268,9 +268,14 @@ export function HairstyleGrid({
                           type: 'hairstyle',
                           name: hair.name,
                           details: {
-                            style: hair.stylingProduct,
+                            style: hair.suitableProducts?.[0] || 'Textured natural',
                             maintenance: `${hair.maintenanceLevel} Maintenance`,
-                            barberNotes: hair.sidesAndBack,
+                            barberNotes: hair.barberInstructions?.sidesAndBack || hair.whyItWorksBase,
+                            sidesAndBack: hair.barberInstructions?.sidesAndBack,
+                            topLength: hair.barberInstructions?.topLength,
+                            fadeType: hair.barberInstructions?.fadeOrTaperType,
+                            stylingProduct: hair.suitableProducts?.join(', '),
+                            faceShape: faceShape,
                           },
                         })
                       }
