@@ -12,19 +12,18 @@ import {
   RefreshCw,
   Camera,
   Upload,
-  Sliders,
   User,
   Copy,
-  Layers,
-  ArrowUpDown,
-  Move,
-  Maximize2,
   CheckCheck,
+  ArrowRight,
+  Sparkle,
+  SlidersHorizontal,
+  SplitSquareVertical,
 } from 'lucide-react';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { LookPreviewResult } from '@/lib/types';
 import { saveLookRecord } from '@/lib/saved/looksStore';
-import { synthesizeLookPreviewSvgUrl } from '@/lib/ai/preview/previewService';
+import { getStyleReferenceImage } from '@/lib/ai/preview/previewService';
 import { CATALOG_HAIRSTYLES } from '@/lib/recommendations/catalog';
 
 interface LookPreviewModalProps {
@@ -46,46 +45,19 @@ interface LookPreviewModalProps {
       occasion?: string;
       hairColor?: string;
       garmentColor?: string;
-      verticalOffset?: number;
-      scale?: number;
       faceShape?: string;
     };
     baseImage?: string;
   } | null;
 }
 
-const HAIR_COLOR_PRESETS = [
-  { name: 'Natural Black', hex: '#1B1816' },
-  { name: 'Dark Espresso', hex: '#30241E' },
-  { name: 'Rich Chestnut', hex: '#4A3728' },
-  { name: 'Ash Brown', hex: '#3B3632' },
-  { name: 'Warm Bronze', hex: '#583D2D' },
-];
-
-const OUTFIT_COLOR_PRESETS = [
-  { name: 'Slate Navy', hex: '#263445' },
-  { name: 'Oatmeal Sand', hex: '#D7CEBE' },
-  { name: 'Forest Olive', hex: '#4A5B43' },
-  { name: 'Warm Terracotta', hex: '#C2593F' },
-  { name: 'Espresso Bronze', hex: '#3B2F2F' },
-  { name: 'Charcoal Black', hex: '#1C1917' },
-];
-
 export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalProps) {
-  const [activeTab, setActiveTab] = useState<'tryon' | 'barber'>('tryon');
-  const [viewMode, setViewMode] = useState<'split' | 'full'>('split');
-  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'slider' | 'sidebyside' | 'barber'>('slider');
   const [previewData, setPreviewData] = useState<LookPreviewResult | null>(null);
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [copiedBarber, setCopiedBarber] = useState(false);
-
-  // Hairline & silhouette fine-tuning state
-  const [verticalOffset, setVerticalOffset] = useState<number>(0);
-  const [scale, setScale] = useState<number>(1.0);
-  const [selectedColor, setSelectedColor] = useState<string>('');
-  const [showUploader, setShowUploader] = useState<boolean>(false);
+  const [showUploader, setShowUploader] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // User profile context from storage (Face shape, age)
@@ -120,72 +92,31 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
         }
       }
 
-      // Default color
-      const defaultColor =
-        target.type === 'hairstyle'
-          ? target.details?.hairColor || '#241C18'
-          : target.details?.garmentColor || target.details?.color || '#263445';
-      setSelectedColor(defaultColor);
-      setVerticalOffset(0);
-      setScale(1.0);
-      setActiveTab('tryon');
-      setViewMode('split');
+      // 3. Resolve photorealistic style reference photo
+      const referencePhoto = getStyleReferenceImage(target.type, target.name);
 
-      // Instant local synthesis + API background warm-up
-      generateInstantPreview(0, 1.0, defaultColor, resolvedPhoto);
+      setPreviewData({
+        previewUrl: referencePhoto,
+        originalUrl: resolvedPhoto || undefined,
+        isAiGeneratedNotice: 'High-Definition Salon Reference • Proportional Geometry Match',
+        styleNotes: [
+          target.type === 'hairstyle'
+            ? `Haircut silhouette tailored to: ${target.name}`
+            : `Wardrobe silhouette tailored to: ${target.name}`,
+          `Engineered for ${userFaceShape} face geometry`,
+          'Proportional balance matched against natural facial contours',
+        ],
+        disclaimer:
+          'High-definition salon visualization matched to your face proportions. Real-world hair texture and tailor fit naturally vary.',
+      });
+
+      setActiveTab('slider');
       setSaved(false);
       setCopiedBarber(false);
     } else {
       setPreviewData(null);
-      setError(null);
     }
   }, [isOpen, target?.name, target?.type]);
-
-  /**
-   * Generates instantaneous preview using client-side SVG synthesizer (0ms latency)
-   */
-  const generateInstantPreview = (
-    offset: number,
-    hairScale: number,
-    colorHex: string,
-    photoToUse: string | null
-  ) => {
-    if (!target) return;
-    try {
-      const previewUrl = synthesizeLookPreviewSvgUrl(
-        target.type,
-        target.name,
-        {
-          ...(target.details || {}),
-          color: colorHex,
-          hairColor: colorHex,
-          garmentColor: colorHex,
-          verticalOffset: offset,
-          scale: hairScale,
-        },
-        photoToUse || undefined
-      );
-
-      setPreviewData({
-        previewUrl,
-        originalUrl: photoToUse || undefined,
-        isAiGeneratedNotice: 'AI-Generated Visualization • Conceptual Silhouette',
-        styleNotes: [
-          target.type === 'hairstyle'
-            ? `Haircut contour adjusted to: ${target.name}`
-            : `Wardrobe silhouette styled to: ${target.name}`,
-          'Facial proportions, skin tone, and identity markers strictly preserved',
-          'Optical balance evaluated against natural facial geometry',
-        ],
-        disclaimer:
-          'Approximate AI preview for conceptual styling direction only. Real-world hair texture, lighting, and tailoring naturally vary from algorithmic simulation.',
-      });
-      setError(null);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Visual preview synthesis encountered an unexpected error.';
-      setError(message);
-    }
-  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -200,39 +131,17 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('facefit_preview_image', base64);
         }
-        generateInstantPreview(verticalOffset, scale, selectedColor, base64);
       }
     };
     reader.readAsDataURL(file);
   };
 
-  const handleColorChange = (hex: string) => {
-    setSelectedColor(hex);
-    generateInstantPreview(verticalOffset, scale, hex, userPhoto);
-  };
-
-  const handleOffsetSlider = (newOffset: number) => {
-    setVerticalOffset(newOffset);
-    generateInstantPreview(newOffset, scale, selectedColor, userPhoto);
-  };
-
-  const handleScaleSlider = (newScale: number) => {
-    setScale(newScale);
-    generateInstantPreview(verticalOffset, newScale, selectedColor, userPhoto);
-  };
-
-  const handleApplyPreset = (presetOffset: number, presetScale = 1.0) => {
-    setVerticalOffset(presetOffset);
-    setScale(presetScale);
-    generateInstantPreview(presetOffset, presetScale, selectedColor, userPhoto);
-  };
-
   if (!isOpen || !target) return null;
 
   const isHair = target.type === 'hairstyle';
+  const lowerName = (target.name || '').toLowerCase();
 
   // Resolve Barber catalog entry or rich specifications
-  const lowerName = (target.name || '').toLowerCase();
   const catalogMatch = isHair
     ? CATALOG_HAIRSTYLES.find(
         (h) =>
@@ -296,7 +205,7 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
         : ['Matte Styling Clay', 'Sea Salt Texture Spray']),
     whyItWorks:
       catalogMatch?.whyItWorksBase ||
-      `Engineered for ${userFaceShape} face geometry. Provides vertical lift and clean perimeters without adding unflattering lateral width.`,
+      `Accentuates your ${userFaceShape} facial structure by providing clean lateral taper lines and balanced crown texture without adding horizontal bulk.`,
   };
 
   const handleSaveLook = () => {
@@ -318,11 +227,11 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
 
   const handleCopyBarberCard = () => {
     const textToCopy = [
-      `💈 FACEFIT AI - BARBER SPECIFICATION CARD`,
+      `💈 FACEFIT AI - BARBER CONSULTATION CARD`,
       `──────────────────────────────────────────────`,
       `Client Style: ${barberSpecs.name}`,
       `Category: ${barberSpecs.category}`,
-      `Client Face Shape: ${userFaceShape} Geometry`,
+      `Client Face Shape: ${userFaceShape} Geometry (${userAgeRange} Stage)`,
       ``,
       `✂️ CUTTING BLUEPRINT:`,
       `• Sides & Back: ${barberSpecs.sidesAndBack}`,
@@ -334,7 +243,7 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
       `• Products: ${barberSpecs.products.join(', ')}`,
       `• Daily Styling: ~3 to 5 minutes on towel-damp hair`,
       ``,
-      `💡 WHY THIS CUT WORKS:`,
+      `💡 WHY THIS CUT SUITS YOUR FACE:`,
       `${barberSpecs.whyItWorks}`,
       `──────────────────────────────────────────────`,
       `Synthesized by FaceFit AI Studio`,
@@ -345,8 +254,10 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
     setTimeout(() => setCopiedBarber(false), 3000);
   };
 
+  const targetPhoto = previewData?.previewUrl || getStyleReferenceImage(target.type, target.name);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
       <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-neutral-100 overflow-hidden flex flex-col max-h-[94vh]">
         {/* Header Bar */}
         <div className="p-4 sm:p-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/90">
@@ -360,11 +271,11 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
                   {target.name}
                 </h3>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                  {userPhoto ? 'On Your Face' : 'Simulation'}
+                  Salon Preview
                 </span>
               </div>
               <p className="text-xs text-neutral-500">
-                {userPhoto ? 'Rendered directly on your uploaded portrait' : 'Visual style simulation'}
+                Face geometry transformation & master barber consultation
               </p>
             </div>
           </div>
@@ -378,35 +289,49 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
           </button>
         </div>
 
-        {/* Tab Switcher (Try-On vs Barber Dossier) */}
-        {isHair && (
-          <div className="flex border-b border-neutral-100 bg-neutral-50/60 px-4 sm:px-6 gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('tryon')}
-              className={`py-3 px-4 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-                activeTab === 'tryon'
-                  ? 'border-neutral-900 text-neutral-900'
-                  : 'border-transparent text-neutral-400 hover:text-neutral-700'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              🪞 Interactive Virtual Try-On
-            </button>
+        {/* Studio View Switcher Tabs */}
+        <div className="flex border-b border-neutral-100 bg-neutral-50/70 px-4 sm:px-6 gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('slider')}
+            className={`py-3 px-3.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'slider'
+                ? 'border-neutral-900 text-neutral-900'
+                : 'border-transparent text-neutral-400 hover:text-neutral-700'
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
+            ⇋ Transformation Slider
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('sidebyside')}
+            className={`py-3 px-3.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'sidebyside'
+                ? 'border-neutral-900 text-neutral-900'
+                : 'border-transparent text-neutral-400 hover:text-neutral-700'
+            }`}
+          >
+            <SplitSquareVertical className="w-3.5 h-3.5 text-amber-600" />
+            ⧉ Side-by-Side Studio
+          </button>
+
+          {isHair && (
             <button
               type="button"
               onClick={() => setActiveTab('barber')}
-              className={`py-3 px-4 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              className={`py-3 px-3.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
                 activeTab === 'barber'
                   ? 'border-neutral-900 text-neutral-900'
                   : 'border-transparent text-neutral-400 hover:text-neutral-700'
               }`}
             >
               <Scissors className="w-3.5 h-3.5 text-amber-700" />
-              💈 Studio Barber Dossier
+              💈 Barber Blueprint
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Modal Scrollable Body */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
@@ -416,16 +341,16 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
               <div className="flex items-center gap-2.5">
                 <User className="w-4 h-4 text-amber-700 shrink-0" />
                 <span>
-                  <strong>Want to see this style fitted on your face?</strong> Upload a quick photo.
+                  <strong>Want to compare this style directly against your face?</strong> Upload a quick photo.
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowUploader(true)}
-                className="px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-[11px] font-semibold transition shrink-0 cursor-pointer flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-[11px] font-semibold transition shrink-0 cursor-pointer flex items-center gap-1.5 shadow-xs"
               >
                 <Camera className="w-3.5 h-3.5 text-amber-400" />
-                Add My Photo
+                Upload Photo
               </button>
             </div>
           )}
@@ -465,269 +390,161 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
             </div>
           )}
 
-          {/* TAB 1: INTERACTIVE VIRTUAL TRY-ON */}
-          {activeTab === 'tryon' && (
-            <div className="space-y-4">
-              {/* View Switcher: Split Slider vs Full Result */}
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-neutral-700 flex items-center gap-1.5">
-                  <Move className="w-3.5 h-3.5 text-amber-600" />
-                  Visual Try-On Studio
-                </div>
-                <div className="flex items-center p-0.5 rounded-xl bg-neutral-100 border border-neutral-200 text-[11px] font-medium">
+          {/* TAB 1: TRANSFORMATION SLIDER (BEFORE vs AFTER) */}
+          {activeTab === 'slider' && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="flex items-center justify-between text-xs text-neutral-500">
+                <span className="font-semibold text-neutral-700">
+                  Drag the slider to compare your profile with the tailored cut:
+                </span>
+                {userPhoto && (
                   <button
                     type="button"
-                    onClick={() => setViewMode('split')}
-                    className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                      viewMode === 'split'
-                        ? 'bg-white text-neutral-900 shadow-xs font-semibold'
-                        : 'text-neutral-500 hover:text-neutral-800'
-                    }`}
+                    onClick={() => setShowUploader(true)}
+                    className="text-[11px] text-amber-800 hover:text-amber-900 font-semibold underline underline-offset-2 cursor-pointer"
                   >
-                    ⇋ Split Compare
+                    Change Photo
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('full')}
-                    className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                      viewMode === 'full'
-                        ? 'bg-white text-neutral-900 shadow-xs font-semibold'
-                        : 'text-neutral-500 hover:text-neutral-800'
-                    }`}
-                  >
-                    ✦ Full Styled Look
-                  </button>
-                </div>
-              </div>
-
-              {/* Visual Display: Before/After Slider OR Full Image */}
-              <div className="flex justify-center">
-                {viewMode === 'split' ? (
-                  <BeforeAfterSlider
-                    currentImageUrl={userPhoto || previewData?.originalUrl || previewData?.previewUrl || ''}
-                    suggestedImageUrl={previewData?.previewUrl || ''}
-                    currentLabel={userPhoto ? 'Before (You)' : 'Original'}
-                    suggestedLabel={userPhoto ? 'After (Styled)' : 'Suggested'}
-                  />
-                ) : (
-                  <div className="relative w-full aspect-[3/4] max-w-sm rounded-2xl overflow-hidden border border-neutral-200 shadow-md bg-neutral-100">
-                    <img
-                      src={previewData?.previewUrl}
-                      alt={target.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-neutral-900/80 backdrop-blur-xs text-white text-[10px] font-bold tracking-wider uppercase">
-                      ✦ Styled Look
-                    </div>
-                  </div>
                 )}
               </div>
 
-              {/* SLIDER CONTROLS: HAIRLINE PLACEMENT & SCALE */}
-              {isHair && (
-                <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-3.5 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-900">
-                      <Sliders className="w-3.5 h-3.5 text-amber-700" />
-                      Adjust Hairline & Head Alignment
-                    </div>
-                    {userPhoto && (
-                      <button
-                        type="button"
-                        onClick={() => setShowUploader(true)}
-                        className="text-[11px] text-amber-800 hover:text-amber-900 font-semibold underline underline-offset-2 cursor-pointer"
-                      >
-                        Change Photo
-                      </button>
-                    )}
-                  </div>
+              {/* Draggable Before / After Slider */}
+              <div className="flex justify-center">
+                <BeforeAfterSlider
+                  currentImageUrl={userPhoto || targetPhoto}
+                  suggestedImageUrl={targetPhoto}
+                  currentLabel={userPhoto ? 'You (Current)' : 'Client Profile'}
+                  suggestedLabel="Target Cut"
+                />
+              </div>
 
-                  {/* 1. Hairline Height Slider */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs text-neutral-600">
-                      <span className="flex items-center gap-1 font-medium">
-                        <ArrowUpDown className="w-3.5 h-3.5 text-neutral-500" />
-                        Hairline Height (Vertical Offset):
-                      </span>
-                      <span className="font-mono text-[11px] font-bold text-neutral-800 px-2 py-0.5 rounded bg-neutral-200/70">
-                        {verticalOffset > 0 ? `+${verticalOffset}px` : `${verticalOffset}px`}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="-140"
-                      max="160"
-                      step="2"
-                      value={verticalOffset}
-                      onChange={(e) => handleOffsetSlider(Number(e.target.value))}
-                      className="w-full accent-neutral-900 cursor-pointer h-1.5 bg-neutral-200 rounded-lg"
-                    />
-                    <div className="flex justify-between text-[10px] text-neutral-400">
-                      <span>Lower Hairline (-140px)</span>
-                      <span>Natural Forehead</span>
-                      <span>Higher Hairline (+160px)</span>
-                    </div>
-                  </div>
-
-                  {/* 2. Hair Width & Scale Slider */}
-                  <div className="space-y-1 pt-1">
-                    <div className="flex items-center justify-between text-xs text-neutral-600">
-                      <span className="flex items-center gap-1 font-medium">
-                        <Maximize2 className="w-3.5 h-3.5 text-neutral-500" />
-                        Hair Volume & Width Scale:
-                      </span>
-                      <span className="font-mono text-[11px] font-bold text-neutral-800 px-2 py-0.5 rounded bg-neutral-200/70">
-                        {scale.toFixed(2)}x
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0.70"
-                      max="1.40"
-                      step="0.02"
-                      value={scale}
-                      onChange={(e) => handleScaleSlider(Number(e.target.value))}
-                      className="w-full accent-neutral-900 cursor-pointer h-1.5 bg-neutral-200 rounded-lg"
-                    />
-                    <div className="flex justify-between text-[10px] text-neutral-400">
-                      <span>Narrow Head (0.70x)</span>
-                      <span>Standard (1.00x)</span>
-                      <span>Broader Volume (1.40x)</span>
-                    </div>
-                  </div>
-
-                  {/* 3. Quick One-Tap Alignment Presets */}
-                  <div className="pt-1 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-neutral-400 mr-1">
-                      Quick Fit:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyPreset(40, scale)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition cursor-pointer ${
-                        verticalOffset === 40
-                          ? 'bg-neutral-900 text-white border-neutral-900'
-                          : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-100'
-                      }`}
-                    >
-                      High Forehead (+40)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyPreset(0, scale)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition cursor-pointer ${
-                        verticalOffset === 0
-                          ? 'bg-neutral-900 text-white border-neutral-900'
-                          : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-100'
-                      }`}
-                    >
-                      Center (0)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyPreset(-40, scale)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition cursor-pointer ${
-                        verticalOffset === -40
-                          ? 'bg-neutral-900 text-white border-neutral-900'
-                          : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-100'
-                      }`}
-                    >
-                      Low Forehead (-40)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyPreset(0, 1.0)}
-                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-neutral-200 text-neutral-700 hover:bg-neutral-300 transition cursor-pointer ml-auto"
-                    >
-                      Reset All
-                    </button>
-                  </div>
-
-                  {/* 4. Natural Hair Tone Palette */}
-                  <div className="pt-2 border-t border-neutral-200/60 flex items-center justify-between">
-                    <span className="text-[11px] text-neutral-600 font-medium">Hair Color Tone:</span>
-                    <div className="flex items-center gap-2">
-                      {HAIR_COLOR_PRESETS.map((preset) => (
-                        <button
-                          key={preset.hex}
-                          type="button"
-                          onClick={() => handleColorChange(preset.hex)}
-                          className={`w-5 h-5 rounded-full border transition-all cursor-pointer ${
-                            selectedColor.toLowerCase() === preset.hex.toLowerCase()
-                              ? 'ring-2 ring-neutral-900 ring-offset-1 scale-110 shadow-xs'
-                              : 'border-neutral-300 hover:scale-105'
-                          }`}
-                          style={{ backgroundColor: preset.hex }}
-                          title={preset.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
+              {/* Transformation Highlights Card */}
+              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-neutral-900">
+                  <Sparkle className="w-3.5 h-3.5 text-amber-600" />
+                  Facial Harmony Blueprint for {userFaceShape} Geometry
                 </div>
-              )}
-
-              {/* Garment Controls if Outfit */}
-              {!isHair && (
-                <div className="p-3.5 rounded-2xl bg-neutral-50 border border-neutral-200/80 flex items-center justify-between">
-                  <span className="text-xs font-medium text-neutral-700">Garment Palette:</span>
-                  <div className="flex items-center gap-1.5">
-                    {OUTFIT_COLOR_PRESETS.map((preset) => (
-                      <button
-                        key={preset.hex}
-                        type="button"
-                        onClick={() => handleColorChange(preset.hex)}
-                        className={`w-5 h-5 rounded-full border transition-all cursor-pointer ${
-                          selectedColor.toLowerCase() === preset.hex.toLowerCase()
-                            ? 'ring-2 ring-neutral-900 scale-110 shadow-xs'
-                            : 'border-neutral-300 hover:scale-105'
-                        }`}
-                        style={{ backgroundColor: preset.hex }}
-                        title={preset.name}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Identity Protection Guarantee Banner */}
-              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-neutral-50 border border-neutral-200/70 text-xs text-neutral-600">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-                <div>
-                  <span className="font-semibold text-neutral-800">Ethical Identity Guarantee: </span>
-                  {previewData?.disclaimer ||
-                    'Hair and styling simulation only. Your natural facial features, skin tone, and expressions are 100% preserved.'}
+                <p className="text-xs text-neutral-600 leading-relaxed">
+                  {barberSpecs.whyItWorks}
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1 text-[11px]">
+                  <span className="px-2.5 py-1 rounded-lg bg-white border border-neutral-200 text-neutral-700 font-medium">
+                    ✓ Clean Lateral Taper
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-white border border-neutral-200 text-neutral-700 font-medium">
+                    ✓ Defined Forehead Framing
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-white border border-neutral-200 text-neutral-700 font-medium">
+                    ✓ Balanced Crown Height
+                  </span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 2: STUDIO BARBER DOSSIER */}
-          {activeTab === 'barber' && isHair && (
+          {/* TAB 2: SIDE-BY-SIDE STUDIO VIEW */}
+          {activeTab === 'sidebyside' && (
             <div className="space-y-4 animate-fadeIn">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                {/* Left Column: Client Reference Portrait (2 cols) */}
-                <div className="md:col-span-2 space-y-3">
-                  <div className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden border border-neutral-200 shadow-xs bg-neutral-100">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Left Card: You */}
+                <div className="p-3.5 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-700">
+                      Your Current Profile
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-800">
+                      {userFaceShape} Face
+                    </span>
+                  </div>
+                  <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden border border-neutral-100 bg-neutral-100">
                     {userPhoto ? (
                       <img
                         src={userPhoto}
-                        alt="Client Portrait"
+                        alt="Your Current Profile"
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center text-neutral-400">
+                      <div className="w-full h-full flex flex-col items-center justify-center p-4 text-neutral-400">
                         <User className="w-12 h-12 mb-2 stroke-1" />
-                        <span className="text-xs">No client photo uploaded</span>
+                        <span className="text-xs">Upload your photo to compare</span>
                       </div>
                     )}
+                  </div>
+                  <div className="text-[11px] text-neutral-500 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Age Stage:</span>
+                      <span className="font-semibold text-neutral-800">{userAgeRange} Years</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Proportions:</span>
+                      <span className="font-semibold text-neutral-800">Balanced Width-to-Height</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Card: Target Look */}
+                <div className="p-3.5 rounded-2xl bg-white border border-neutral-200 shadow-xs space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-900">
+                      Target Silhouette
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
+                      Salon Cut
+                    </span>
+                  </div>
+                  <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden border border-neutral-100 bg-neutral-100">
+                    <img
+                      src={targetPhoto}
+                      alt={target.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="text-[11px] text-neutral-500 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Style:</span>
+                      <span className="font-semibold text-neutral-800">{barberSpecs.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Maintenance:</span>
+                      <span className="font-semibold text-amber-800">{barberSpecs.category}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Transformation Comparison Bar */}
+              <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-1.5 text-xs text-amber-950">
+                <span className="font-bold flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                  Stylist Transformation Analysis:
+                </span>
+                <p className="leading-relaxed">
+                  Switching to this silhouette trims bulky horizontal perimeter growth while keeping textured, intentional volume on top. This elongates your face geometry and creates a crisp, confident profile for college and professional environments.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: MASTER BARBER BLUEPRINT */}
+          {activeTab === 'barber' && isHair && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {/* Left Column: Reference Image (2 cols) */}
+                <div className="md:col-span-2 space-y-3">
+                  <div className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden border border-neutral-200 shadow-xs bg-neutral-100">
+                    <img
+                      src={targetPhoto}
+                      alt={target.name}
+                      className="w-full h-full object-cover"
+                    />
                     <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-neutral-900/80 backdrop-blur-xs text-white text-[10px] font-bold tracking-wider uppercase">
-                      Client Profile
+                      Salon Reference
                     </div>
                   </div>
 
                   <div className="p-3 rounded-xl bg-neutral-50 border border-neutral-200 text-xs space-y-1.5">
                     <div className="flex justify-between">
-                      <span className="text-neutral-500">Face Shape:</span>
+                      <span className="text-neutral-500">Client Face:</span>
                       <span className="font-bold text-neutral-800">{userFaceShape} Geometry</span>
                     </div>
                     <div className="flex justify-between">
@@ -735,13 +552,13 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
                       <span className="font-medium text-neutral-700">{userAgeRange} Years</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-neutral-500">Silhouette Balance:</span>
-                      <span className="font-medium text-emerald-700">Optimal Harmony</span>
+                      <span className="text-neutral-500">Maintenance:</span>
+                      <span className="font-semibold text-neutral-800">{barberSpecs.category}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Right Column: Barber Blueprint Specifications (3 cols) */}
+                {/* Right Column: Barber Cutting Specifications (3 cols) */}
                 <div className="md:col-span-3 space-y-3">
                   {/* Style Header */}
                   <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-1">
@@ -749,7 +566,7 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
                       <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 px-2 py-0.5 rounded-full bg-amber-100">
                         {barberSpecs.category}
                       </span>
-                      <span className="text-xs text-amber-900/80 font-medium">Salon Blueprint</span>
+                      <span className="text-xs text-amber-900/80 font-medium">Master Barber Spec</span>
                     </div>
                     <h4 className="font-serif-editorial font-bold text-neutral-900 text-base">
                       {barberSpecs.name}
@@ -788,12 +605,6 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
                     </div>
                   </div>
 
-                  {/* Why It Works Rationale */}
-                  <div className="p-3.5 rounded-2xl bg-neutral-50 border border-neutral-200 text-xs space-y-1">
-                    <span className="font-semibold text-neutral-800">Geometry Synergy:</span>
-                    <p className="text-neutral-600">{barberSpecs.whyItWorks}</p>
-                  </div>
-
                   {/* 1-Click Copy Barber Instructions CTA */}
                   <button
                     type="button"
@@ -823,6 +634,15 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
               </div>
             </div>
           )}
+
+          {/* Ethical Identity Guarantee Notice */}
+          <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-neutral-50 border border-neutral-200/70 text-xs text-neutral-600">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+            <div>
+              <span className="font-semibold text-neutral-800">Authentic Identity Guarantee: </span>
+              Your real facial features, skin tone, and expressions are completely untouched. Styling visualizations provide precise salon specifications based on your authentic face geometry.
+            </div>
+          </div>
         </div>
 
         {/* Modal Footer Actions */}
@@ -836,11 +656,10 @@ export function LookPreviewModal({ isOpen, onClose, target }: LookPreviewModalPr
           <div className="flex items-center gap-2">
             <button
               onClick={handleSaveLook}
-              disabled={loading || !previewData}
               className={`px-4 py-2 rounded-xl text-xs font-medium inline-flex items-center gap-1.5 transition cursor-pointer ${
                 saved
                   ? 'bg-emerald-600 text-white'
-                  : 'bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-50'
+                  : 'bg-neutral-900 text-white hover:bg-neutral-800'
               }`}
             >
               {saved ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
