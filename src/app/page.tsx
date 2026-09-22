@@ -3,9 +3,7 @@ import { Navbar } from '@/components/common/Navbar';
 import { Footer } from '@/components/common/Footer';
 import { HeroSection } from '@/components/landing/HeroSection';
 import { SampleProfilePreview } from '@/components/landing/SampleProfilePreview';
-import { PillarsSection } from '@/components/landing/PillarsSection';
 import { HowItWorks } from '@/components/landing/HowItWorks';
-import { EthicsBanner } from '@/components/landing/EthicsBanner';
 
 export default function HomePage() {
   return (
@@ -15,8 +13,6 @@ export default function HomePage() {
         <HeroSection />
         <SampleProfilePreview />
         <HowItWorks />
-        <PillarsSection />
-        <EthicsBanner />
       </main>
       <Footer />
     </div>
