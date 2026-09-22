@@ -6,30 +6,40 @@ import { StyleAnalysisOutput, StyleAnalysisOutputSchema } from './schema';
  */
 export function normalizeAgeRange(input: unknown): string {
   if (typeof input === 'number') {
-    const min = Math.max(16, input - 2);
+    if (input <= 18) {
+      const min = Math.max(14, input - 1);
+      const max = input + 2;
+      return `${min}-${max}`;
+    }
+    const min = Math.max(14, input - 2);
     const max = input + 2;
     return `${min}-${max}`;
   }
 
   if (typeof input === 'string') {
     const trimmed = input.trim();
-    // If it's already a range like "18-22" or "22 - 26"
+    // If it's already a range like "17-20" or "16 - 19"
     if (trimmed.includes('-') || trimmed.includes('–')) {
       return trimmed.replace(/\s+/g, '');
     }
 
-    // If it's a single number string like "24"
+    // If it's a single number string like "17"
     const singleNum = parseInt(trimmed, 10);
     if (!isNaN(singleNum)) {
-      const min = Math.max(16, singleNum - 2);
+      if (singleNum <= 18) {
+        const min = Math.max(14, singleNum - 1);
+        const max = singleNum + 2;
+        return `${min}-${max}`;
+      }
+      const min = Math.max(14, singleNum - 2);
       const max = singleNum + 2;
       return `${min}-${max}`;
     }
 
-    return trimmed || '22-26';
+    return trimmed || '17-20';
   }
 
-  return '22-26';
+  return '17-20';
 }
 
 /**
@@ -67,7 +77,7 @@ export function validateAndSanitizeModelOutput(rawJson: unknown): {
       const ageVal = obj.estimated_age_range || obj.estimated_age || obj.age_range;
       obj.estimated_age_range = normalizeAgeRange(ageVal);
     } else {
-      obj.estimated_age_range = '22-26';
+      obj.estimated_age_range = '17-20';
     }
 
     // 2. Ensure confidence is valid enum

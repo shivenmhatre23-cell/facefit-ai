@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { IVisionProvider, VisionAnalysisRequest } from '../types';
 import { StyleAnalysisOutput } from '../schema';
-import { AI_VISION_ANALYSIS_PROMPT } from '../prompts';
+import { AI_VISION_ANALYSIS_PROMPT, getAiVisionAnalysisPrompt } from '../prompts';
 import { validateAndSanitizeModelOutput } from '../validator';
 
 export class GeminiVisionProvider implements IVisionProvider {
@@ -13,7 +13,7 @@ export class GeminiVisionProvider implements IVisionProvider {
   }
 
   async analyzePortrait(request: VisionAnalysisRequest): Promise<StyleAnalysisOutput> {
-    const { imageBase64, mimeType } = request;
+    const { imageBase64, mimeType, userPreferences } = request;
 
     // Clean base64 data if it contains the data:image/... prefix
     let cleanBase64 = imageBase64;
@@ -26,13 +26,19 @@ export class GeminiVisionProvider implements IVisionProvider {
       if (match) detectedMime = match[1];
     }
 
+    const calibratedPrompt = getAiVisionAnalysisPrompt(
+      userPreferences?.ageHint,
+      userPreferences?.lowMaintenanceOnly,
+      userPreferences?.budgetFocus
+    );
+
     const response = await this.client.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [
         {
           role: 'user',
           parts: [
-            { text: AI_VISION_ANALYSIS_PROMPT },
+            { text: calibratedPrompt },
             {
               inlineData: {
                 mimeType: detectedMime,

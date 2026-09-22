@@ -22,10 +22,23 @@ CRITICAL SAFETY & ETHICAL DIRECTIVES (STRICT & UNCOMPROMISING):
    - Attractiveness, symmetry ratings, or beauty scores (No numbers out of 10. No words like "ugly", "flawed", "substandard", or "perfection")
    - Socioeconomic status or wealth
 
-2. AGE ESTIMATION RULE:
-   - NEVER output an exact age as a fact (e.g. NEVER output "23" or 23).
-   - You MUST output ONLY an approximate AGE RANGE span of 4 to 6 years (e.g. "18-22", "22-26", "27-32", "33-38").
+2. AGE ESTIMATION RULE & OPTICAL CALIBRATION:
+   - NEVER output an exact age as a fact (e.g. NEVER output "17" or "23" as an absolute number).
+   - You MUST output ONLY an approximate AGE RANGE span of 3 to 5 years (e.g. "15-18", "16-19", "17-20", "20-24", "25-29", "30-35").
    - Pair it with an "age_confidence" score of "low", "medium", or "high".
+
+   OPTICAL AGE MORPHOLOGY CRITERIA:
+   * Late Teens / Junior College (15–18, 16–19, 17–20):
+     - Skin: High collagen firmness, smooth uncreased forehead and periorbital contours, youthful plump transitions.
+     - Facial Geometry: Developing mandibular angle (soft, transitional jawline bone mass rather than hardened adult angularity).
+     - Facial Hair: Juvenile or transitional hair (sparse, soft vellus-to-terminal hairs, light upper-lip shadow or patchy soft stubble; NOT dense, deep follicular roots across cheeks/neck).
+     - Hairline: Dense, intact youthful hairline with zero recession.
+
+   * Young Adult / University (20–24):
+     - More defined mandibular angles, mature terminal facial hair follicles, subtle temporal maturity.
+
+   * CRITICAL ANTI-OVERESTIMATION WARNING FOR TEENAGERS (15–19):
+     Vision models frequently bias 16–19 year olds as 21–25 due to adult casual clothing, camera angles, or early stubble. You MUST examine skin collagen smoothness, cheek volume, and facial hair maturity. If the subject possesses youthful skin and juvenile facial hair or is in late high school / early college age, accurately assign '15-18', '16-19', or '17-20' rather than prematurely defaulting to the 20s.
 
 3. THREE-TIER EPISTEMIC DISTINCTION (MANDATORY):
    You must clearly distinguish between:
@@ -44,7 +57,7 @@ CRITICAL SAFETY & ETHICAL DIRECTIVES (STRICT & UNCOMPROMISING):
 REQUIRED OUTPUT FORMAT:
 You must respond with ONLY a strictly valid JSON object conforming to this exact structure:
 {
-  "estimated_age_range": "21-25",
+  "estimated_age_range": "17-20",
   "age_confidence": "high",
   "face_shape": "Oval",
   "hair": {
@@ -150,3 +163,40 @@ Provide 3 diverse hairstyle recommendations and 3 diverse outfit recommendations
 Ensure all phrasing remains constructive, respectful, tentative, and strictly non-judgmental.
 Return ONLY valid JSON.
 `;
+
+/**
+ * Builds a vision analysis prompt that incorporates explicit user preferences and age calibration hints
+ */
+export function getAiVisionAnalysisPrompt(ageHint?: string, lowMaintenanceOnly?: boolean, budgetFocus?: boolean): string {
+  let prompt = AI_VISION_ANALYSIS_PROMPT;
+
+  const extraDirectives: string[] = [];
+
+  if (ageHint && ageHint.trim()) {
+    extraDirectives.push(`
+USER CALIBRATION HINT (HIGH PRIORITY):
+The user indicated their actual age or stage is "${ageHint.trim()}".
+- Accurately align the "estimated_age_range" to this ground truth (e.g. for age 17, output "16-19" or "17-20").
+- Tailor hairstyles, grooming, and clothing to this specific life stage (e.g. late-teen / college-freshman campus-friendly, low-friction, budget-conscious styling).
+- Set "age_confidence" to "high" since user calibration ground truth is confirmed.`);
+  }
+
+  if (lowMaintenanceOnly) {
+    extraDirectives.push(`
+MAINTENANCE PREFERENCE:
+The user explicitly requests LOW MAINTENANCE styling options requiring 5 minutes or less of daily effort.`);
+  }
+
+  if (budgetFocus) {
+    extraDirectives.push(`
+BUDGET PREFERENCE:
+Prioritize high-value budget outfits under ₹3,000 INR total wardrobe assembly.`);
+  }
+
+  if (extraDirectives.length > 0) {
+    prompt += `\n\nUSER-SPECIFIED CALIBRATION INSTRUCTIONS:\n` + extraDirectives.join('\n');
+  }
+
+  return prompt;
+}
+

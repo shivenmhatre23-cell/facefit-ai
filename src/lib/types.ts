@@ -238,6 +238,11 @@ export interface LookPreviewRequest {
     style?: string;
     barberNotes?: string;
     pieces?: { item: string; color: string }[];
+    hairColor?: string;
+    garmentColor?: string;
+    verticalOffset?: number;
+    scale?: number;
+    [key: string]: any;
   };
   baseImage?: string; // base64 or ephemeral preview
 }

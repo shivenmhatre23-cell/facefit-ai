@@ -4,6 +4,7 @@ export interface VisionAnalysisRequest {
   imageBase64: string;
   mimeType: string;
   userPreferences?: {
+    ageHint?: string;
     lowMaintenanceOnly?: boolean;
     budgetFocus?: boolean;
     stylePreferences?: string[];

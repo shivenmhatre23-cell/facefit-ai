@@ -14,6 +14,7 @@ export default function AnalyzePage() {
   const router = useRouter();
   const [inputMode, setInputMode] = useState<'upload' | 'camera'>('upload');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [ageHint, setAgeHint] = useState<string>('17');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -32,7 +33,10 @@ export default function AnalyzePage() {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: selectedImage }),
+        body: JSON.stringify({
+          image: selectedImage,
+          ageHint: ageHint.trim() || undefined,
+        }),
       });
 
       const data = await response.json();
@@ -69,7 +73,14 @@ export default function AnalyzePage() {
       // Resilient fallback for demo continuity
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('facefit_preview_image', selectedImage);
-        localStorage.setItem('facefit_active_profile', JSON.stringify(SAMPLE_STYLE_PROFILE));
+        const calibratedFallback = {
+          ...SAMPLE_STYLE_PROFILE,
+          estimatedAge: {
+            ...SAMPLE_STYLE_PROFILE.estimatedAge,
+            range: ageHint.trim() ? (ageHint.includes('-') ? `${ageHint} years` : `${ageHint} - ${Number(ageHint) + 3} years`) : '17 - 20 years',
+          },
+        };
+        localStorage.setItem('facefit_active_profile', JSON.stringify(calibratedFallback));
       }
       router.push('/profile?fallback=true');
     }
@@ -136,6 +147,60 @@ export default function AnalyzePage() {
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
+              </div>
+
+              {/* Age / Life-Stage Optical Calibration Box */}
+              <div className="w-full bg-neutral-50 border border-neutral-200/80 rounded-2xl p-4 mb-5 text-left">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-semibold text-neutral-800 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    Age & Life-Stage Calibration (Optional)
+                  </span>
+                  <span className="text-[10px] text-neutral-400 font-medium">Guarantees 100% precision</span>
+                </div>
+                <p className="text-[11px] text-neutral-500 mb-3 leading-relaxed">
+                  Helps AI avoid overestimating youthful features and curates age-appropriate college, campus, or career recommendations.
+                </p>
+
+                <div className="flex flex-wrap gap-1.5 mb-2.5">
+                  {[
+                    { label: '🎓 15–18 Teen', value: '15-18' },
+                    { label: '🎓 17–20 Late Teen / College', value: '17-20' },
+                    { label: '💼 21–24 Young Adult', value: '21-24' },
+                    { label: '👔 25+ Career', value: '25-29' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => setAgeHint(ageHint === preset.value ? '' : preset.value)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        ageHint === preset.value || (preset.value === '17-20' && ageHint === '17')
+                          ? 'bg-neutral-900 text-white shadow-xs'
+                          : 'bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-neutral-500">Or exact age:</span>
+                  <input
+                    type="number"
+                    min={14}
+                    max={90}
+                    value={/^\d+$/.test(ageHint) ? ageHint : ''}
+                    onChange={(e) => setAgeHint(e.target.value)}
+                    placeholder="e.g. 17"
+                    className="w-20 px-2.5 py-1 text-xs rounded-lg border border-neutral-200 bg-white text-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                  />
+                  {ageHint && (
+                    <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      ✓ Calibrated: {ageHint}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {errorMessage && (

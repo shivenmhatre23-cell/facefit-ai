@@ -11,6 +11,7 @@ interface ProfileHeaderProps {
   onOpenStylist: () => void;
   onOpenShare: () => void;
   onOpenPreferences?: () => void;
+  onAgeUpdate?: (newRange: string) => void;
 }
 
 export function ProfileHeader({
@@ -18,6 +19,7 @@ export function ProfileHeader({
   onOpenStylist,
   onOpenShare,
   onOpenPreferences,
+  onAgeUpdate,
 }: ProfileHeaderProps) {
   const [previewImg, setPreviewImg] = useState<string | null>(null);
 
@@ -111,7 +113,7 @@ export function ProfileHeader({
           <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider mb-1.5">
             Approx. Age Range
           </span>
-          <AgeEstimateBadge age={profile?.estimatedAge} />
+          <AgeEstimateBadge age={profile?.estimatedAge} onAgeUpdate={onAgeUpdate} />
         </div>
 
         {/* 2. Face Shape */}

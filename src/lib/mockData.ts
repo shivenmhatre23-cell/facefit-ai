@@ -4,7 +4,7 @@ export const SAMPLE_STYLE_PROFILE: StyleProfile = {
   id: 'profile-sample-01',
   timestamp: new Date().toISOString(),
   estimatedAge: {
-    range: '21 - 25 years',
+    range: '17 - 20 years',
     confidence: 'high',
     disclaimer: 'AI approximation based on visual proportions and aesthetic markers. Visual age is used solely for styling, silhouette balance, and color curation.'
   },

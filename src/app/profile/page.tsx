@@ -73,6 +73,23 @@ function ProfileContent() {
     );
   }
 
+  const handleAgeUpdate = (newRange: string) => {
+    if (!profile) return;
+    const updated: StyleProfile = {
+      ...profile,
+      estimatedAge: {
+        ...profile.estimatedAge,
+        range: newRange,
+        confidence: 'high',
+        disclaimer: 'User-calibrated age stage for precision personalized styling.',
+      },
+    };
+    setProfile(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('facefit_active_profile', JSON.stringify(updated));
+    }
+  };
+
   const faceShape = profile?.faceGeometry?.shape || 'Oval';
 
   return (
@@ -86,6 +103,7 @@ function ProfileContent() {
           onOpenStylist={() => setIsStylistOpen(true)}
           onOpenShare={() => setIsShareOpen(true)}
           onOpenPreferences={() => setIsPreferencesOpen(true)}
+          onAgeUpdate={handleAgeUpdate}
         />
 
         {/* Style DNA Affinity Card */}

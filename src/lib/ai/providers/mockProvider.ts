@@ -1,5 +1,6 @@
 import { IVisionProvider, VisionAnalysisRequest } from '../types';
 import { StyleAnalysisOutput } from '../schema';
+import { normalizeAgeRange } from '../validator';
 
 export class MockVisionProvider implements IVisionProvider {
   readonly name = 'FaceFit Optical Simulator (Offline/Mock)';
@@ -8,8 +9,11 @@ export class MockVisionProvider implements IVisionProvider {
     // Simulate brief processing delay
     await new Promise((resolve) => setTimeout(resolve, 800));
 
+    const ageHint = _request.userPreferences?.ageHint;
+    const estimatedAgeRange = ageHint ? normalizeAgeRange(ageHint) : '17-20';
+
     return {
-      estimated_age_range: '21-25',
+      estimated_age_range: estimatedAgeRange,
       age_confidence: 'high',
       face_shape: 'Oval',
       hair: {

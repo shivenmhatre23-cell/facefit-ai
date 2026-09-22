@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { image, preferences } = body || {};
+    const { image, preferences, ageHint } = body || {};
 
     // 3. Check presence of image
     if (!image || typeof image !== 'string') {
@@ -61,12 +61,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Combine top-level or nested ageHint
+    const mergedPreferences = {
+      ...(preferences || {}),
+      ...(ageHint ? { ageHint: String(ageHint).trim() } : {}),
+    };
+
     // 5. Ephemeral processing through vision pipeline (never logs raw image data)
     // Note: sanitizedBase64 contains purified base64 payload without script injections
     const result = await visionService.processPortrait({
       imageBase64: validation.sanitizedBase64 || image,
       mimeType: validation.mimeType || 'image/jpeg',
-      userPreferences: preferences,
+      userPreferences: mergedPreferences,
     });
 
     return NextResponse.json({

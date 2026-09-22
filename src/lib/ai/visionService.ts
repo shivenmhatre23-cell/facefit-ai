@@ -93,7 +93,7 @@ export class VisionService {
           }));
 
     const faceShape = analysis?.face_shape || 'Oval';
-    const ageRange = analysis?.estimated_age_range || '22-26';
+    const ageRange = analysis?.estimated_age_range || '17-20';
     const ageConfidence = analysis?.age_confidence || 'medium';
     const hairTexture = analysis?.hair?.texture || 'Natural';
     const hairLength = (analysis?.hair?.length as any) || 'Medium';
