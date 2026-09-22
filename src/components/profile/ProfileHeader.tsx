@@ -4,18 +4,24 @@ import React from 'react';
 import Link from 'next/link';
 import { StyleProfile } from '@/lib/types';
 import { AgeEstimateBadge } from './AgeEstimateBadge';
-import { Sparkles, Share2, RefreshCw, MessageSquare, Palette, Scissors, UserCheck } from 'lucide-react';
+import { Sparkles, Share2, RefreshCw, MessageSquare, Sliders } from 'lucide-react';
 
 interface ProfileHeaderProps {
   profile: StyleProfile;
   onOpenStylist: () => void;
   onOpenShare: () => void;
+  onOpenPreferences?: () => void;
 }
 
-export function ProfileHeader({ profile, onOpenStylist, onOpenShare }: ProfileHeaderProps) {
+export function ProfileHeader({
+  profile,
+  onOpenStylist,
+  onOpenShare,
+  onOpenPreferences,
+}: ProfileHeaderProps) {
   return (
     <div className="luxury-card rounded-3xl p-6 sm:p-9 bg-white border border-neutral-200 shadow-xs mb-10">
-      {/* Top Section Title as requested */}
+      {/* Top Section Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-100">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-neutral-900 text-white flex items-center justify-center shadow-xs">
@@ -32,7 +38,18 @@ export function ProfileHeader({ profile, onOpenStylist, onOpenShare }: ProfileHe
         </div>
 
         {/* Top Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {onOpenPreferences && (
+            <button
+              onClick={onOpenPreferences}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-amber-50 hover:bg-amber-100/80 border border-amber-200 text-amber-900 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+              title="Adjust your lifestyle, budget, and maintenance parameters"
+            >
+              <Sliders className="w-3.5 h-3.5 text-amber-700" />
+              Tune Preferences
+            </button>
+          )}
+
           <button
             onClick={onOpenStylist}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold tracking-wide transition-all shadow-xs hover:shadow-md cursor-pointer"
@@ -40,6 +57,7 @@ export function ProfileHeader({ profile, onOpenStylist, onOpenShare }: ProfileHe
             <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
             Ask AI Stylist
           </button>
+
           <button
             onClick={onOpenShare}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-700 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
@@ -48,6 +66,7 @@ export function ProfileHeader({ profile, onOpenStylist, onOpenShare }: ProfileHe
             <Share2 className="w-3.5 h-3.5" />
             Export
           </button>
+
           <Link
             href="/analyze"
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-500 hover:text-neutral-900 text-xs font-medium transition-colors"

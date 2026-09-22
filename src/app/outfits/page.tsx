@@ -4,14 +4,24 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/common/Navbar';
 import { Footer } from '@/components/common/Footer';
 import { OutfitFormulaCard } from '@/components/profile/OutfitFormulaCard';
-import { StyleProfile } from '@/lib/types';
+import { StylePreferencesModal } from '@/components/preferences/StylePreferencesModal';
+import { StyleProfile, OutfitCombination } from '@/lib/types';
 import { SAMPLE_STYLE_PROFILE } from '@/lib/mockData';
-import { Shirt, Sparkles, Filter, Tag } from 'lucide-react';
+import { getUserPreferences } from '@/lib/recommendations/preferencesStore';
+import { getRankedOutfits, ScoredOutfit } from '@/lib/recommendations/scoringEngine';
+import { Shirt, Sparkles, Sliders } from 'lucide-react';
 import Link from 'next/link';
 
 export default function OutfitsPage() {
   const [profile, setProfile] = useState<StyleProfile>(SAMPLE_STYLE_PROFILE);
-  const [filterOccasion, setFilterOccasion] = useState<string>('All');
+  const [rankedOutfits, setRankedOutfits] = useState<ScoredOutfit[]>([]);
+  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
+
+  const recalculate = () => {
+    const prefs = getUserPreferences();
+    const scored = getRankedOutfits(prefs);
+    setRankedOutfits(scored);
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -24,17 +34,10 @@ export default function OutfitsPage() {
         }
       }
     }
+    recalculate();
+    window.addEventListener('facefit_preferences_changed', recalculate);
+    return () => window.removeEventListener('facefit_preferences_changed', recalculate);
   }, []);
-
-  const occasions = ['All', 'College', 'Presentation', 'Social'];
-
-  const filteredOutfits = profile.outfitCombinations.filter((outfit) => {
-    if (filterOccasion === 'All') return true;
-    return (
-      outfit.occasion.toLowerCase().includes(filterOccasion.toLowerCase()) ||
-      outfit.title.toLowerCase().includes(filterOccasion.toLowerCase())
-    );
-  });
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
@@ -49,40 +52,49 @@ export default function OutfitsPage() {
               Wardrobe Architecture
             </div>
             <h1 className="text-3xl font-serif-editorial font-bold text-neutral-900">
-              Curated Outfit Combinations
+              Scored Outfit Combinations
             </h1>
             <p className="text-xs text-neutral-500 mt-1 max-w-xl">
-              Engineered for your <strong className="text-neutral-800">{profile.colorPalette.seasonName}</strong> palette and <strong className="text-neutral-800">{profile.suggestedAesthetics[0]}</strong> aesthetic direction.
+              Ranked dynamically by your target occasion, local climate, budget cap, and clothes you already own.
             </p>
           </div>
 
-          {/* Occasion Filter */}
-          <div className="flex items-center gap-1.5 p-1 bg-neutral-100 rounded-xl border border-neutral-200 self-start md:self-auto">
-            <span className="text-[10px] text-neutral-400 font-bold uppercase px-2">Occasion:</span>
-            {occasions.map((occ) => (
-              <button
-                key={occ}
-                onClick={() => setFilterOccasion(occ)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  filterOccasion === occ
-                    ? 'bg-white text-neutral-900 shadow-xs'
-                    : 'text-neutral-500 hover:text-neutral-800'
-                }`}
-              >
-                {occ}
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() => setIsPreferencesOpen(true)}
+            className="self-start md:self-auto px-4 py-2.5 rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 text-xs font-semibold text-neutral-800 flex items-center gap-2 transition-colors cursor-pointer shadow-2xs"
+          >
+            <Sliders className="w-3.5 h-3.5 text-amber-700" />
+            Tune Parameters
+          </button>
         </div>
 
-        {/* Outfit Cards Grid */}
+        {/* Outfit Cards Grid with Scoring and Transparency */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {filteredOutfits.map((outfit, idx) => (
-            <OutfitFormulaCard key={outfit.id} outfit={outfit} index={idx} />
-          ))}
+          {rankedOutfits.map((item, idx) => {
+            const outfitAdapter: OutfitCombination = {
+              id: item.outfit.id,
+              title: item.outfit.title,
+              aesthetic: item.outfit.styleCategory,
+              occasion: item.outfit.primaryOccasion,
+              pieces: item.outfit.pieces,
+              totalVibe: item.outfit.totalVibe,
+              budgetTier: item.outfit.budgetTier,
+            };
+
+            return (
+              <OutfitFormulaCard
+                key={item.outfit.id}
+                outfit={outfitAdapter}
+                index={idx}
+                match={item.match}
+                ownedPiecesUsed={item.ownedPiecesUsed}
+                effectiveCostINR={item.finalCostWithOwnedINR}
+              />
+            );
+          })}
         </div>
 
-        {/* Garment Fit Guidance Box */}
+        {/* Structural Garment Fit Protocol Guide */}
         <div className="luxury-card rounded-2xl p-6 sm:p-8 bg-white border border-neutral-200 shadow-2xs">
           <div className="flex items-center gap-2 mb-4">
             <Shirt className="w-4 h-4 text-amber-700" />
@@ -110,6 +122,11 @@ export default function OutfitsPage() {
           </div>
         </div>
       </main>
+
+      <StylePreferencesModal
+        isOpen={isPreferencesOpen}
+        onClose={() => setIsPreferencesOpen(false)}
+      />
 
       <Footer />
     </div>

@@ -12,9 +12,10 @@ import { WardrobeSection } from '@/components/profile/WardrobeSection';
 import { GroomingAndAccessories } from '@/components/profile/GroomingAndAccessories';
 import { StylistDrawer } from '@/components/stylist/StylistDrawer';
 import { ShareModal } from '@/components/profile/ShareModal';
+import { StylePreferencesModal } from '@/components/preferences/StylePreferencesModal';
 import { SAMPLE_STYLE_PROFILE } from '@/lib/mockData';
 import { StyleProfile } from '@/lib/types';
-import { MessageSquare, Sparkles, ShieldCheck } from 'lucide-react';
+import { MessageSquare, Sparkles, ShieldCheck, Sliders } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 function ProfileContent() {
@@ -22,6 +23,7 @@ function ProfileContent() {
   const [profile, setProfile] = useState<StyleProfile>(SAMPLE_STYLE_PROFILE);
   const [isStylistOpen, setIsStylistOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -43,10 +45,9 @@ function ProfileContent() {
     }
     setIsLoaded(true);
 
-    // Fire celebration confetti once when loaded
     confetti({
-      particleCount: 40,
-      spread: 60,
+      particleCount: 35,
+      spread: 55,
       origin: { y: 0.2 },
       colors: ['#d97706', '#b45309', '#171717', '#e2e8f0'],
     });
@@ -73,6 +74,7 @@ function ProfileContent() {
           profile={profile}
           onOpenStylist={() => setIsStylistOpen(true)}
           onOpenShare={() => setIsShareOpen(true)}
+          onOpenPreferences={() => setIsPreferencesOpen(true)}
         />
 
         {/* 2-Column Geometry & Color Section */}
@@ -81,11 +83,18 @@ function ProfileContent() {
           <ColorPaletteSection palette={profile.colorPalette} />
         </div>
 
-        {/* Hairstyle Recommendations with Barber Card */}
-        <HairstyleGrid hairstyles={profile.hairstyles} />
+        {/* Hairstyle Recommendations with Barber Card & Transparency */}
+        <HairstyleGrid
+          hairstyles={profile.hairstyles}
+          faceShape={profile.faceGeometry.shape}
+          onOpenPreferences={() => setIsPreferencesOpen(true)}
+        />
 
-        {/* Wardrobe & Outfits with INR Budgets */}
-        <WardrobeSection profile={profile} />
+        {/* Wardrobe & Outfits with Scored INR Budgets */}
+        <WardrobeSection
+          profile={profile}
+          onOpenPreferences={() => setIsPreferencesOpen(true)}
+        />
 
         {/* Grooming Protocol & Accessories */}
         <GroomingAndAccessories profile={profile} />
@@ -94,13 +103,13 @@ function ProfileContent() {
         <div className="p-4 rounded-xl bg-neutral-100/80 border border-neutral-200/80 flex items-center justify-between text-xs text-neutral-500 mb-8">
           <span className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-            FaceFit AI computes optical harmony and proportions. We never rate facial attractiveness or store portraits.
+            FaceFit AI scores recommendations based on your preferences, climate, and visible geometry. We never judge attractiveness.
           </span>
           <button
-            onClick={() => setIsShareOpen(true)}
+            onClick={() => setIsPreferencesOpen(true)}
             className="text-amber-800 hover:text-amber-900 font-semibold underline underline-offset-2 shrink-0 ml-4 cursor-pointer"
           >
-            Export Dossier
+            Adjust Parameters
           </button>
         </div>
       </main>
@@ -133,6 +142,12 @@ function ProfileContent() {
         profile={profile}
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
+      />
+
+      {/* Style Preferences Tuning Modal */}
+      <StylePreferencesModal
+        isOpen={isPreferencesOpen}
+        onClose={() => setIsPreferencesOpen(false)}
       />
 
       <Footer />

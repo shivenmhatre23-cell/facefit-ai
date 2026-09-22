@@ -4,14 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/common/Navbar';
 import { Footer } from '@/components/common/Footer';
 import { HairstyleGrid } from '@/components/profile/HairstyleGrid';
+import { StylePreferencesModal } from '@/components/preferences/StylePreferencesModal';
 import { StyleProfile } from '@/lib/types';
 import { SAMPLE_STYLE_PROFILE } from '@/lib/mockData';
-import { Scissors, Sparkles, Filter } from 'lucide-react';
+import { Scissors, Sparkles, Sliders } from 'lucide-react';
 import Link from 'next/link';
 
 export default function HairstylesPage() {
   const [profile, setProfile] = useState<StyleProfile>(SAMPLE_STYLE_PROFILE);
-  const [filterLevel, setFilterLevel] = useState<'All' | 'Low' | 'Medium' | 'High'>('All');
+  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -26,11 +27,6 @@ export default function HairstylesPage() {
     }
   }, []);
 
-  const filteredHairstyles = profile.hairstyles.filter((h) => {
-    if (filterLevel === 'All') return true;
-    return h.maintenanceLevel === filterLevel;
-  });
-
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
       <Navbar />
@@ -44,34 +40,28 @@ export default function HairstylesPage() {
               Hair Architecture Studio
             </div>
             <h1 className="text-3xl font-serif-editorial font-bold text-neutral-900">
-              Hairstyle Recommendations
+              Scored Hairstyle Recommendations
             </h1>
             <p className="text-xs text-neutral-500 mt-1 max-w-xl">
-              Cuts specifically tailored to your <strong className="text-neutral-800">{profile.faceGeometry.shape}</strong> facial geometry, hairline density, and natural <strong className="text-neutral-800">{profile.hairAnalysis.texture}</strong> wave texture.
+              Cuts ranked and scored to match your <strong className="text-neutral-800">{profile.faceGeometry.shape}</strong> facial geometry, maintenance tolerance, and grooming habits.
             </p>
           </div>
 
-          {/* Maintenance Filter Pills */}
-          <div className="flex items-center gap-1.5 p-1 bg-neutral-100 rounded-xl border border-neutral-200 self-start md:self-auto">
-            <span className="text-[10px] text-neutral-400 font-bold uppercase px-2">Filter:</span>
-            {(['All', 'Low', 'Medium', 'High'] as const).map((lvl) => (
-              <button
-                key={lvl}
-                onClick={() => setFilterLevel(lvl)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  filterLevel === lvl
-                    ? 'bg-white text-neutral-900 shadow-xs'
-                    : 'text-neutral-500 hover:text-neutral-800'
-                }`}
-              >
-                {lvl}
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() => setIsPreferencesOpen(true)}
+            className="self-start md:self-auto px-4 py-2.5 rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 text-xs font-semibold text-neutral-800 flex items-center gap-2 transition-colors cursor-pointer shadow-2xs"
+          >
+            <Sliders className="w-3.5 h-3.5 text-amber-700" />
+            Tune Parameters
+          </button>
         </div>
 
-        {/* Hairstyle Cards Grid */}
-        <HairstyleGrid hairstyles={filteredHairstyles} />
+        {/* Hairstyle Cards Grid with Transparent Scoring */}
+        <HairstyleGrid
+          hairstyles={profile.hairstyles}
+          faceShape={profile.faceGeometry.shape}
+          onOpenPreferences={() => setIsPreferencesOpen(true)}
+        />
 
         {/* Barber Consultation Banner */}
         <div className="p-6 rounded-2xl bg-neutral-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-8">
@@ -91,6 +81,11 @@ export default function HairstylesPage() {
           </Link>
         </div>
       </main>
+
+      <StylePreferencesModal
+        isOpen={isPreferencesOpen}
+        onClose={() => setIsPreferencesOpen(false)}
+      />
 
       <Footer />
     </div>
