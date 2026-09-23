@@ -40,27 +40,53 @@ export async function analyzePortraitImage(base64DataWithPrefix: string): Promis
   }
 
   try {
-    const response = await geminiClient.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: VISION_SYSTEM_PROMPT },
-            {
-              inlineData: {
-                mimeType,
-                data: base64Data,
+    let response;
+    try {
+      response = await geminiClient.models.generateContent({
+        model: 'gemini-3.5-flash-lite',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: VISION_SYSTEM_PROMPT },
+              {
+                inlineData: {
+                  mimeType,
+                  data: base64Data,
+                },
               },
-            },
-          ],
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.3,
         },
-      ],
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.3,
-      },
-    });
+      });
+    } catch {
+      // Fallback to gemini-3.5-flash
+      response = await geminiClient.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: VISION_SYSTEM_PROMPT },
+              {
+                inlineData: {
+                  mimeType,
+                  data: base64Data,
+                },
+              },
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.3,
+        },
+      });
+    }
 
     const rawText = response.text || '';
     if (!rawText.trim()) {

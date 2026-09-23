@@ -77,16 +77,30 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const streamResponse = await geminiClient.models.generateContentStream({
-        model: 'gemini-2.5-flash',
-        contents: conversationHistory,
-        config: {
-          systemInstruction: {
-            parts: [{ text: systemInstruction }],
+      let streamResponse;
+      try {
+        streamResponse = await geminiClient.models.generateContentStream({
+          model: 'gemini-3.5-flash-lite',
+          contents: conversationHistory,
+          config: {
+            systemInstruction: {
+              parts: [{ text: systemInstruction }],
+            },
+            temperature: 0.7,
           },
-          temperature: 0.7,
-        },
-      });
+        });
+      } catch {
+        streamResponse = await geminiClient.models.generateContentStream({
+          model: 'gemini-3.5-flash',
+          contents: conversationHistory,
+          config: {
+            systemInstruction: {
+              parts: [{ text: systemInstruction }],
+            },
+            temperature: 0.7,
+          },
+        });
+      }
 
       const encoder = new TextEncoder();
       const readable = new ReadableStream({

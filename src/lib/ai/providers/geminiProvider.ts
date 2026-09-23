@@ -32,27 +32,53 @@ export class GeminiVisionProvider implements IVisionProvider {
       userPreferences?.budgetFocus
     );
 
-    const response = await this.client.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: calibratedPrompt },
-            {
-              inlineData: {
-                mimeType: detectedMime,
-                data: cleanBase64,
+    let response;
+    try {
+      response = await this.client.models.generateContent({
+        model: 'gemini-3.5-flash-lite',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: calibratedPrompt },
+              {
+                inlineData: {
+                  mimeType: detectedMime,
+                  data: cleanBase64,
+                },
               },
-            },
-          ],
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.25, // Lower temperature for strict schema adherence
         },
-      ],
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.25, // Lower temperature for strict schema adherence
-      },
-    });
+      });
+    } catch {
+      // Fallback model if primary has load spike
+      response = await this.client.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: calibratedPrompt },
+              {
+                inlineData: {
+                  mimeType: detectedMime,
+                  data: cleanBase64,
+                },
+              },
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.25,
+        },
+      });
+    }
 
     const rawText = response.text || '';
     if (!rawText.trim()) {
